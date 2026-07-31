@@ -1,0 +1,54 @@
+{
+  "id": "product_launch",
+  "title": "Product Launch Strategy",
+  "description": "Your product team is preparing to launch a new fitness wearable into a crowded market where the first few months could define the product's reputation. Three launch strategies are on the table, each with a different path to customers, growth, and risk. Review the evidence and decide which strategy the company should pursue.",
+  "p1_persona": "You are a product marketing lead responsible for positioning, early customer enthusiasm, and brand credibility. You are looking for a launch plan that creates demand without overpromising what the product can sustain.",
+  "p2_persona": "You are a commercial strategy lead responsible for channels, unit economics, and scaling risk. You are looking for a launch plan that can grow efficiently while protecting the company from expensive missteps.",
+  "candidates": [
+    {
+      "id": "A",
+      "name": "Premium Launch"
+    },
+    {
+      "id": "B",
+      "name": "Mass Market Launch"
+    },
+    {
+      "id": "C",
+      "name": "Community-First Launch"
+    }
+  ],
+  "correct_answer": "C",
+  "correct_rationale": "Pooled, Community-First has 6 distinct positive signals (beta retention, organic social reach, waitlist conversion, firmware-iteration risk reduction, repeat purchase, lower CAC). Premium has 3 (P1-only); Mass Market has 3 (P2-only). P1 alone leans Premium; P2 alone leans Mass Market; pooled C dominates.",
+  "archetype": "pro_split",
+  "shared_info": [
+    "The Premium Launch prices the wearable at $349 targeting fitness enthusiasts",
+    "The Mass Market Launch prices at $149 targeting casual users with broad retail distribution",
+    "The Community-First Launch prices at $199, starts with online community, then expands to retail"
+  ],
+  "p1_unique_info": [
+    "The Premium segment generated 45% gross margin in our last hardware launch \u2014 the highest of any segment",
+    "Premium positioning would let us partner with the leading fitness influencer in our target market, who has signalled interest at the $349 price point",
+    "Premium customers historically drive 4x the brand-advocacy referrals of mass-market customers in our category",
+    "The Community-First approach was tested with 500 beta users who showed 94% 90-day retention \u2014 the highest the company has ever recorded",
+    "Community-First beta users organically created 2,300 social media posts about the product without being asked",
+    "Community-First customers have a 38% repeat-purchase rate within 12 months in our category benchmarks"
+  ],
+  "p2_unique_info": [
+    "Mass Market unit economics improve sharply at scale \u2014 projected 28% margin at 500K units, vs single-digit margin at 50K units",
+    "Mass Market positioning has secured a tentative endcap deal with the largest national fitness retailer, contingent on a Q2 launch",
+    "Our category's growth is driven by casual users entering the market \u2014 this segment grew 31% YoY vs 6% for fitness enthusiasts",
+    "Pre-launch waitlist data shows Community-First positioning converted 3x more signups per ad dollar than Premium or Mass Market messaging",
+    "Community-First lets us iterate firmware based on engaged user feedback before scaling \u2014 reducing the risk of a public recall (recalls cost ~$2M each in our category)",
+    "Customer acquisition cost is projected at $14/user for Community-First vs $58/user for Premium and $32/user for Mass Market"
+  ],
+  "anchor_option": "A",
+  "anchor_rationale": "The Premium Launch maximises per-unit revenue and brand positioning",
+  "slots": {
+    "ANCHOR": "Premium Launch",
+    "NON_ANCHOR_1": "Mass Market Launch",
+    "NON_ANCHOR_2": "Community-First Launch",
+    "ANCHOR_FEATURE": "premium positioning",
+    "ROLE_LEVEL": "a $5M-budget launch"
+  }
+}

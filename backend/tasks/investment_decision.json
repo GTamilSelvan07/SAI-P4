@@ -1,0 +1,54 @@
+{
+  "id": "investment_decision",
+  "title": "Venture Fund Investment",
+  "description": "Your venture capital committee is about to make a $2M investment decision from a highly contested shortlist. Each startup has delivered a polished pitch, but the partners know that the strongest opportunity may depend on details that are easy to miss. Review the available evidence and decide which company deserves the fund's backing.",
+  "p1_persona": "You are a venture partner with a background in product and technical diligence. You are expected to test whether each company's claims, leadership story, and technology advantage can hold up after investment.",
+  "p2_persona": "You are a venture partner with a background in market traction and portfolio operations. You are expected to judge whether each company has real customer momentum, credible execution capacity, and a path to scale.",
+  "candidates": [
+    {
+      "id": "A",
+      "name": "GreenGrid Energy"
+    },
+    {
+      "id": "B",
+      "name": "HealthBridge AI"
+    },
+    {
+      "id": "C",
+      "name": "EduFlow Labs"
+    }
+  ],
+  "correct_answer": "A",
+  "correct_rationale": "GreenGrid is the strongest investment when context is pooled: signed government LOIs worth $8M (P2) and a defensible patent on novel energy storage (P1) are clean wins. The 'pros' for HealthBridge and EduFlow that look strong individually flip to red flags in context \u2014 HealthBridge's celebrated technical lead was forced out of the prior startup over the same technology; EduFlow's flagship pilot survived three years through founder loans, not real product traction.",
+  "archetype": "twisty",
+  "shared_info": [
+    "GreenGrid Energy is developing smart-grid optimisation technology for renewable energy",
+    "HealthBridge AI is building a diagnostic platform for rural clinics",
+    "EduFlow Labs is creating personalised learning software for K-12 schools"
+  ],
+  "p1_unique_info": [
+    "HealthBridge AI's technical co-founder was named to a leading 'AI 30 under 30' list last year for diagnostic platform work",
+    "HealthBridge AI's pitch deck cites a 92% diagnostic accuracy figure that, on closer reading, is benchmarked against a ten-year-old standard rather than current state of practice",
+    "HealthBridge AI's CEO left her previous startup under disputed circumstances involving investor disagreements over the same diagnostic technology she now claims as IP",
+    "GreenGrid has a provisional patent on a novel energy-storage algorithm that competitor reverse-engineering attempts have failed to replicate",
+    "GreenGrid's CTO previously sold a smart-grid company to a Fortune 500 utility for $180M",
+    "GreenGrid's first paying pilot customer has already renewed their contract for a second year, six months ahead of schedule"
+  ],
+  "p2_unique_info": [
+    "EduFlow Labs has been operating for 3 years and is widely cited in EdTech press as a 'persistence story' \u2014 but financial filings show two of those years were funded by personal loans from the founders, not revenue",
+    "EduFlow Labs' flagship school district pilot generated 'high engagement metrics' but was quietly cancelled after 6 months once the district moved beyond surface metrics to actual learning-outcome data \u2014 teacher adoption was 23%",
+    "EduFlow Labs' 'pivot' last year (positioned in press as strategic) was prompted by their lead engineering team leaving en masse \u2014 the press release omitted the departures",
+    "GreenGrid has signed letters of intent worth $8M from three municipal governments, pending the next funding round",
+    "GreenGrid was selected for a national clean-energy accelerator program over 400 other applicants, providing a 6-month runway extension and government introductions",
+    "GreenGrid's customer NPS score from their 12 active pilots averages 71, exceptional in the energy-infrastructure category"
+  ],
+  "anchor_option": "B",
+  "anchor_rationale": "HealthBridge AI is solving a healthcare access problem, which feels most impactful",
+  "slots": {
+    "ANCHOR": "HealthBridge AI",
+    "NON_ANCHOR_1": "GreenGrid Energy",
+    "NON_ANCHOR_2": "EduFlow Labs",
+    "ANCHOR_FEATURE": "healthcare access focus",
+    "ROLE_LEVEL": "a $2M Series-A check"
+  }
+}

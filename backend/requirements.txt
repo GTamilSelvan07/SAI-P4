@@ -1,0 +1,24 @@
+# Core
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+websockets==14.1
+
+# HTTP client for Ollama
+httpx==0.28.1
+
+# Database
+aiosqlite==0.20.0
+
+# Audio
+soundfile==0.12.1
+numpy==1.26.4
+
+# LSL (optional — install if pylsl available on ARM64)
+# pylsl==1.16.2
+
+# Transcription (install separately — needs CUDA)
+# faster-whisper==1.1.0
+
+# TTS (install separately — needs ONNX runtime)
+# piper-tts==1.2.0

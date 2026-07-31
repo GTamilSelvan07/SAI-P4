@@ -1,0 +1,54 @@
+{
+  "id": "resource_allocation",
+  "title": "Research Grant Allocation",
+  "description": "Your university committee is making the final call on a $500K research grant after months of internal debate. Three respected teams are competing for the award, and the decision will shape the university's research profile, public reputation, and delivery commitments for the next two years. Review the evidence carefully and decide which project should receive the funding.",
+  "p1_persona": "You are a senior academic reviewer on the university grants committee. Your focus is research quality, credibility of prior outputs, and whether the proposed project can deliver publishable results within the grant period.",
+  "p2_persona": "You are a research operations and partnerships reviewer on the university grants committee. Your focus is delivery risk, staffing, external funder requirements, and whether the project can meet its practical commitments.",
+  "candidates": [
+    {
+      "id": "A",
+      "name": "Climate Modelling Lab"
+    },
+    {
+      "id": "B",
+      "name": "Quantum Computing Group"
+    },
+    {
+      "id": "C",
+      "name": "Public Health Analytics Team"
+    }
+  ],
+  "correct_answer": "C",
+  "correct_rationale": "Pooled, Climate Modelling (A) has fatal flaws (P1: lead-researcher sabbatical, replication failures, recent retraction) and Quantum Computing (B) has fatal flaws (P2: hardware delays, breakthrough-algorithm error, key collaborator departure). Public Health has only mild operational drawbacks. C wins by elimination.",
+  "archetype": "con_split",
+  "shared_info": [
+    "The Climate Modelling Lab has published 45 papers in the last 5 years",
+    "The Quantum Computing Group recently attracted international attention for a breakthrough algorithm announcement",
+    "The Public Health Analytics Team works on disease outbreak prediction models and has secured WHO matching funding"
+  ],
+  "p1_unique_info": [
+    "The Climate Modelling Lab's lead researcher is taking a 12-month sabbatical starting next quarter, which would delay the project by at least 6 months past the grant deadline",
+    "The Climate Modelling Lab's last three grants produced results that could not be replicated by independent teams \u2014 flagged in a recent peer-review article",
+    "The Climate Modelling Lab had a high-profile paper retracted last year for a coding error in their core simulation pipeline",
+    "The Public Health Analytics Team's data-pipeline software has not yet been audited for the new university research-data security policy",
+    "The Public Health Analytics Team's senior data engineer is on parental leave returning in 4 months",
+    "The Public Health Analytics Team uses a proprietary visualisation tool that requires a separate $12K licence per workstation"
+  ],
+  "p2_unique_info": [
+    "The Quantum Computing Group's proposed experiment requires hardware that won't be available for 18 months \u2014 past the grant's 24-month deliverable window with little buffer for setbacks",
+    "The Quantum Computing Group's breakthrough algorithm was recently challenged by a competing team who found a significant proof error \u2014 a correction is in pre-print review",
+    "The Quantum Computing Group's senior postdoc (responsible for half of the proposal's experimental work) has been recruited by a private-sector lab and is leaving in 8 weeks",
+    "The Public Health Analytics Team will need to coordinate with the WHO's procurement office for matching-fund disbursement, adding ~6 weeks of administrative overhead",
+    "The Public Health Analytics Team's preliminary results are based on a single regional dataset \u2014 geographic generalisation is still being validated",
+    "The Public Health Analytics Team's planned conference dissemination falls in the same week as a major competing conference, potentially splitting attention"
+  ],
+  "anchor_option": "B",
+  "anchor_rationale": "The Quantum Computing Group's breakthrough algorithm seems most scientifically exciting",
+  "slots": {
+    "ANCHOR": "Quantum Computing Group",
+    "NON_ANCHOR_1": "Climate Modelling Lab",
+    "NON_ANCHOR_2": "Public Health Analytics Team",
+    "ANCHOR_FEATURE": "breakthrough algorithm",
+    "ROLE_LEVEL": "a $500K research grant"
+  }
+}

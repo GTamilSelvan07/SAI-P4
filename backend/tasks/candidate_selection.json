@@ -1,0 +1,55 @@
+{
+  "id": "candidate_selection",
+  "title": "Marketing Director Hire",
+  "description": "Your company is choosing a Marketing Director for a role that will influence brand strategy, team culture, and revenue growth over the next several years. Three finalists have reached the last stage after strong interviews, and the hiring panel must look beyond first impressions to decide who is most likely to succeed. Review the information about each candidate and decide who to hire.",
+  "p1_persona": "You are a hiring panel member from the brand and revenue team. Your focus is campaign performance, market range, strategic creativity, and whether the candidate can raise the company's external profile.",
+  "p2_persona": "You are a hiring panel member from the people and leadership team. Your focus is team retention, talent development, stakeholder trust, and whether the candidate can build a durable marketing organisation.",
+  "candidates": [
+    {
+      "id": "A",
+      "name": "Sarah Chen"
+    },
+    {
+      "id": "B",
+      "name": "Marcus Williams"
+    },
+    {
+      "id": "C",
+      "name": "Priya Sharma"
+    }
+  ],
+  "correct_answer": "B",
+  "correct_rationale": "Pooled, Marcus has 6 distinct positive signals across both reviewers (campaign ROI, team retention, technical assessment top-score, internal-mobility, conference reputation, executive endorsement). Sarah has 3 (P1-only); Priya has 3 (P2-only). P1 alone leans Sarah; P2 alone leans Priya; pooled, Marcus dominates.",
+  "archetype": "pro_split",
+  "shared_info": [
+    "Sarah Chen has 12 years of marketing experience at Fortune 500 companies",
+    "Marcus Williams has 9 years of experience including 4 years as a marketing lead at a high-growth startup",
+    "Priya Sharma has 15 years of experience and an MBA from a top-10 business school"
+  ],
+  "p1_unique_info": [
+    "Sarah's most recent campaign at her current company won a national CMO Council award in 2024",
+    "Sarah has launched products in 6 different verticals \u2014 the broadest cross-industry experience of the three finalists",
+    "Sarah's team at her previous company doubled annual revenue contribution within 18 months of her joining",
+    "Marcus's most recent campaign achieved a 340% ROI, the highest in his current company's history",
+    "Marcus scored 96% on the technical assessment \u2014 the highest of the three finalists",
+    "Marcus has been a featured speaker at three industry conferences in the past two years"
+  ],
+  "p2_unique_info": [
+    "Priya's published book on marketing strategy is used as a textbook at two Ivy League MBA programs",
+    "Priya has personally mentored 30+ marketers, several of whom are now CMOs at peer companies",
+    "Priya led the rebrand of a Fortune 100 client that is widely cited as one of the most successful brand transformations of the decade",
+    "Marcus built and retained a team of 12 marketers with zero voluntary departures over 3 years",
+    "Marcus has promoted 5 direct reports into senior roles, the highest internal-mobility rate among the finalists",
+    "Marcus has a direct endorsement from your CEO's former colleague who worked with him at his previous company"
+  ],
+  "anchor_option": "A",
+  "anchor_rationale": "Sarah has the most years of experience and a Fortune 500 background",
+  "slots": {
+    "ANCHOR": "Sarah Chen",
+    "NON_ANCHOR_1": "Marcus Williams",
+    "NON_ANCHOR_2": "Priya Sharma",
+    "ANCHOR_TENURE": "12 years",
+    "ANCHOR_PEDIGREE": "Fortune 500s",
+    "ROLE_LEVEL": "a director-level role"
+  }
+}

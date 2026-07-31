@@ -1,0 +1,48 @@
+{
+  "id": "practice_task",
+  "title": "Office Location Decision",
+  "description": "Your company is choosing a new office location before the current lease expires. The move will affect daily commutes, collaboration, hiring impressions, and the working environment for 80 employees over the next five years. Review the information and discuss which location is best.",
+  "p1_persona": "You are representing employee experience in the office move discussion. Your focus is wellbeing, collaboration spaces, company image, and whether people will feel proud and comfortable working there.",
+  "p2_persona": "You are representing operations in the office move discussion. Your focus is transport, daily access, parking pressure, and whether the location will work reliably for staff over the full lease.",
+  "candidates": [
+    {
+      "id": "A",
+      "name": "Downtown Tower"
+    },
+    {
+      "id": "B",
+      "name": "Suburban Campus"
+    },
+    {
+      "id": "C",
+      "name": "Waterfront Hub"
+    }
+  ],
+  "correct_answer": "C",
+  "correct_rationale": "Pooled, the Waterfront Hub has both the strongest employee-experience evidence (P1) and the strongest practical access (P2). P1 alone leans A on prestige; P2 alone has reasons to rule out A and B; pooled, C wins.",
+  "archetype": "pro_split",
+  "shared_info": [
+    "All three locations are available for a 5-year lease at comparable per-sqft cost",
+    "The company has 80 employees who need to relocate",
+    "Each location can accommodate the company's projected headcount over the lease term"
+  ],
+  "p1_unique_info": [
+    "An internal employee survey found 72% prefer a location with water views for wellbeing",
+    "The Downtown Tower is widely considered the most prestigious business address in the city",
+    "The Waterfront Hub won a 2025 workplace design award for collaboration spaces"
+  ],
+  "p2_unique_info": [
+    "The Waterfront Hub is a 5-minute walk from the central train station \u2014 best transport link of the three",
+    "The Suburban Campus has no public transport within 2km \u2014 most staff would need to drive daily",
+    "A peer company recently moved away from Downtown Tower citing severe parking issues"
+  ],
+  "anchor_option": "A",
+  "anchor_rationale": "Downtown Tower is the most prestigious address",
+  "slots": {
+    "ANCHOR": "Downtown Tower",
+    "NON_ANCHOR_1": "Suburban Campus",
+    "NON_ANCHOR_2": "Waterfront Hub",
+    "ANCHOR_FEATURE": "prestige address",
+    "ROLE_LEVEL": "an 80-person office"
+  }
+}

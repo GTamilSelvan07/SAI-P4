@@ -1,0 +1,54 @@
+{
+  "id": "technology_adoption",
+  "title": "Enterprise Software Selection",
+  "description": "Your company is selecting a project management platform that will become part of daily work across multiple teams. The choice will affect adoption, integrations, support burden, and operating costs long after the rollout. Three vendors have passed the first evaluation stage; review the evidence and recommend the best option.",
+  "p1_persona": "You are a change-management reviewer representing everyday users and team leads. Your focus is adoption, support experience, product momentum, and whether staff will actually use the platform after rollout.",
+  "p2_persona": "You are an IT and procurement reviewer representing systems operations. Your focus is integrations, contract risk, total cost, and whether the platform fits the company's existing tool stack.",
+  "candidates": [
+    {
+      "id": "A",
+      "name": "TaskForce Pro"
+    },
+    {
+      "id": "B",
+      "name": "FlowState"
+    },
+    {
+      "id": "C",
+      "name": "Synergy Hub"
+    }
+  ],
+  "correct_answer": "B",
+  "correct_rationale": "FlowState's case is clean across both pools: best user adoption in comparable companies, complete API integration with existing tools, and competitive pricing. The strongest 'pros' for TaskForce Pro and Synergy Hub flip to cons once context is pooled \u2014 TaskForce's 'market leader' status conceals a falling NPS and acquisition-driven service collapse; Synergy Hub's 'feature breadth' conceals a discontinued mobile roadmap and high-profile customer departures.",
+  "archetype": "twisty",
+  "shared_info": [
+    "TaskForce Pro has the largest enterprise install base of the three platforms",
+    "FlowState is a newer platform that launched 2 years ago with modern architecture",
+    "Synergy Hub has been established for 10 years with a wide feature set"
+  ],
+  "p1_unique_info": [
+    "TaskForce Pro is the recognised market leader with 45% enterprise share \u2014 but their NPS has dropped from +42 to -8 over the past 18 months, the largest decline of any major PM platform",
+    "TaskForce Pro's customer support response time, advertised as '2 hours', has actually increased to 14 hours since their acquisition last year, per third-party benchmark data",
+    "TaskForce Pro's pricing 'discount for multi-year commits' requires a 3-year minimum with a 25% early-termination fee \u2014 the strictest contract in the category",
+    "FlowState achieved 89% user adoption within 3 months in 5 comparable companies (case studies), the highest of any platform benchmarked",
+    "FlowState's CEO personally committed to a dedicated account manager and quarterly business reviews at no extra cost",
+    "FlowState ships product updates every 2 weeks, vs ~quarterly for TaskForce Pro and Synergy Hub"
+  ],
+  "p2_unique_info": [
+    "Synergy Hub's '10 years established' tenure means 4 of their 6 largest enterprise customers have already issued RFPs to replace them in the next 18 months",
+    "Synergy Hub's 'wide feature set' is heavily concentrated in legacy modules \u2014 their mobile app has a 2.1-star rating and the mobile roadmap was quietly deprioritised at their last all-hands",
+    "Synergy Hub's recent 'AI features' announcement was primarily a press repackaging of existing keyword-search functionality, per analyst write-ups",
+    "FlowState has native API integrations with all 7 tools currently used by your company; TaskForce Pro supports 4 of 7; Synergy Hub supports 3 of 7",
+    "FlowState's annual cost is $95K vs TaskForce Pro's $120K and Synergy Hub's $110K \u2014 the lowest of the three despite shipping fastest",
+    "FlowState was named to two industry 'Top Platforms to Watch' lists this year, both citing their integration depth and architectural choices"
+  ],
+  "anchor_option": "A",
+  "anchor_rationale": "TaskForce Pro is the market leader, which suggests reliability and widespread adoption",
+  "slots": {
+    "ANCHOR": "TaskForce Pro",
+    "NON_ANCHOR_1": "FlowState",
+    "NON_ANCHOR_2": "Synergy Hub",
+    "ANCHOR_FEATURE": "market-leader status",
+    "ROLE_LEVEL": "an enterprise PM platform"
+  }
+}

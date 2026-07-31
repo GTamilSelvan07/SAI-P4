@@ -1,0 +1,54 @@
+{
+  "id": "policy_recommendation",
+  "title": "City Transport Policy",
+  "description": "Your city council advisory committee must recommend the transport initiative that will anchor the next 5-year capital plan. Public pressure is high: commuters want relief, neighbourhood groups are watching the equity impacts, and councillors need a proposal that can survive scrutiny after the announcement. Review the evidence and make a recommendation.",
+  "p1_persona": "You are a community impact advisor to the council. Your focus is access, seasonal usefulness, social equity, and whether the initiative improves everyday mobility for residents who rely on public infrastructure.",
+  "p2_persona": "You are an infrastructure delivery advisor to the council. Your focus is construction risk, legal exposure, cost control, and whether the initiative can be delivered within the political and budget window.",
+  "candidates": [
+    {
+      "id": "A",
+      "name": "Light Rail Extension"
+    },
+    {
+      "id": "B",
+      "name": "Electric Bus Rapid Transit"
+    },
+    {
+      "id": "C",
+      "name": "Cycling Infrastructure Network"
+    }
+  ],
+  "correct_answer": "B",
+  "correct_rationale": "Pooled, Light Rail (A) has fatal flaws (P2: heritage-zone delays, twice-revised cost overruns, lowest projected ridership) and Cycling (C) has fatal flaws (P1: 60% winter usage drop, no impact on commuter routes, equity-of-access gap). Electric BRT has only mild operational drawbacks. BRT wins by elimination.",
+  "archetype": "con_split",
+  "shared_info": [
+    "The Light Rail Extension covers 12km of new track at $850M total cost",
+    "Electric Bus Rapid Transit covers 45km of dedicated bus lanes at $280M total cost",
+    "The Cycling Infrastructure Network covers 200km of protected bike lanes at $120M total cost"
+  ],
+  "p1_unique_info": [
+    "The Cycling Network's projected usage drops 60% during the city's 5-month winter season \u2014 making peak-season ridership numbers misleading",
+    "The Cycling Network would not serve the four outer suburbs where the city's lowest-income workers live, raising significant equity-of-access concerns flagged by the social policy committee",
+    "Independent transport modelling shows the Cycling Network would have negligible impact on commuter routes \u2014 only 2.1% modal shift from cars to bikes",
+    "Electric BRT requires a fleet replacement cycle every 8 years, locking in ongoing capital costs",
+    "Electric BRT shares lanes with emergency vehicles in some corridors, requiring careful traffic-management coordination",
+    "The Electric BRT vehicle vendor is based overseas \u2014 parts lead times average 6 weeks"
+  ],
+  "p2_unique_info": [
+    "The Light Rail Extension route passes through a contested heritage zone that has blocked 2 previous infrastructure projects \u2014 legal challenges are virtually certain",
+    "The Light Rail Extension's cost estimate has already been revised upward twice during the planning phase, from $600M to $850M, with consultants warning of a third revision",
+    "Independent transport modelling shows Light Rail would serve only 45,000 daily riders \u2014 the lowest projected ridership of the three options",
+    "Electric BRT's 18-month construction window will require partial closures of two arterial roads, with projected commuter delays of 8\u201312 minutes during peak",
+    "Electric BRT's electricity demand will require minor grid upgrades at 3 substations, adding ~$8M to the project cost",
+    "Electric BRT vehicles cost 30% more to maintain in their first year than projected, based on data from the early-adopter cities"
+  ],
+  "anchor_option": "A",
+  "anchor_rationale": "Light Rail is a premium transit option that signals the city's ambition",
+  "slots": {
+    "ANCHOR": "Light Rail Extension",
+    "NON_ANCHOR_1": "Electric Bus Rapid Transit",
+    "NON_ANCHOR_2": "Cycling Infrastructure Network",
+    "ANCHOR_FEATURE": "premium transit profile",
+    "ROLE_LEVEL": "a 5-year capital plan"
+  }
+}

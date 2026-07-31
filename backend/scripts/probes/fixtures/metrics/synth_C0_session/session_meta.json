@@ -1,0 +1,18 @@
+{
+  "session_id": "synth_C0",
+  "group_id": "g999",
+  "created_at": 1700000000.0,
+  "mode": "study",
+  "conditions": [
+    "C0"
+  ],
+  "task_order": [
+    "candidate_selection"
+  ],
+  "condition_task_map": {
+    "C0": "candidate_selection"
+  },
+  "anchoring_direction": null,
+  "model": "gemma4:26b",
+  "participants": []
+}

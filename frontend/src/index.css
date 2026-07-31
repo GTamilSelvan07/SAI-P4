@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+/* Light professional theme base */
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* Waveform animation for AI speaking */
+@keyframes waveform {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+.waveform-bar {
+  @apply w-1 rounded-full;
+  animation: waveform 0.8s ease-in-out infinite;
+}
+.waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+.waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+.waveform-bar:nth-child(5) { animation-delay: 0.15s; }
+
+/* Timer pulse red when urgent */
+@keyframes pulse-urgent {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.timer-urgent {
+  animation: pulse-urgent 1s ease-in-out infinite;
+}
+
+/* Speaking ring pulse */
+@keyframes ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+}
+.speaking-ring {
+  animation: ring-pulse 1.5s ease-in-out infinite;
+}
+
+/* Thinking dots animation */
+@keyframes thinking {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
+}
+.thinking-dot:nth-child(1) { animation: thinking 1.4s infinite 0s; }
+.thinking-dot:nth-child(2) { animation: thinking 1.4s infinite 0.2s; }
+.thinking-dot:nth-child(3) { animation: thinking 1.4s infinite 0.4s; }
+
+/* Scrollbar styling */
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ── Interactive Task Display (InfoDisplay) ─────────────────────────────── */
+@keyframes candidate-orb-breathe-kf {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.025); }
+}
+.candidate-orb-breathe {
+  display: inline-block;
+  transform-origin: center;
+  animation: candidate-orb-breathe-kf 4s ease-in-out infinite;
+}
+.candidate-orb-breathe.is-active {
+  animation-play-state: paused;
+  transform: scale(1.06);
+  transition: transform 150ms ease-out;
+}
+
+@keyframes info-card-pulse-kf {
+  0%   { transform: translateZ(0) scale(1.005); }
+  35%  { transform: translateZ(0) scale(1.015); }
+  100% { transform: translateZ(0) scale(1.005); }
+}
+.info-card-pulse {
+  animation: info-card-pulse-kf 600ms ease-out 1;
+}
+
+.info-card-dim {
+  opacity: 0.4 !important;
+  filter: saturate(0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .candidate-orb-breathe { animation: none; }
+  .candidate-orb-breathe.is-active { transform: none; transition: none; }
+  .info-card { transition: none !important; }
+  .info-card-pulse { animation: none; }
+}

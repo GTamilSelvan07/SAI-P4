@@ -1,0 +1,9 @@
+{"ts": 1700000000.0, "type": "session_start", "phase": null, "extra": {}}
+{"ts": 1700000001.0, "type": "phase_change", "phase": "info_reading", "extra": null}
+{"ts": 1700000050.0, "type": "phase_change", "phase": "preference", "extra": null}
+{"ts": 1700000060.0, "type": "phase_change", "phase": "p1_opening", "extra": null}
+{"ts": 1700000075.0, "type": "phase_change", "phase": "p2_opening", "extra": null}
+{"ts": 1700000100.0, "type": "phase_change", "phase": "open_discussion", "extra": null}
+{"ts": 1700000220.0, "type": "phase_change", "phase": "decision", "extra": null}
+{"ts": 1700000250.0, "type": "decision_consensus", "phase": "decision", "extra": {"choice": "B"}}
+{"ts": 1700000280.0, "type": "session_end", "extra": {"reason": "normal"}}
