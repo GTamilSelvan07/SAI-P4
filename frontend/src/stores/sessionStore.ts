@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { SessionStatus, TranscriptLine, AICaption, ComposerState, SlotMap } from "../types";
+import type { SessionStatus, TranscriptLine, AICaption } from "../types";
 
 interface SessionStore {
   sessionId: string | null;
@@ -13,8 +13,6 @@ interface SessionStore {
   useCockpitV3: boolean;
   currentSpeaker: "P1" | "P2" | null;
   lastMentionedCandidate: string | null;
-  slotValues: SlotMap;
-  composerState: ComposerState | null;
   editedPromptIds: Set<string>;
 
   setSessionId: (id: string) => void;
@@ -29,8 +27,6 @@ interface SessionStore {
   setUseCockpitV3: (v: boolean) => void;
   setCurrentSpeaker: (role: "P1" | "P2" | null) => void;
   setLastMentionedCandidate: (name: string | null) => void;
-  setSlotValues: (slots: SlotMap) => void;
-  setComposerState: (s: ComposerState | null) => void;
   markPromptEdited: (id: string) => void;
   reset: () => void;
 }
@@ -47,8 +43,6 @@ export const useSessionStore = create<SessionStore>((set) => ({
   useCockpitV3: true,
   currentSpeaker: null,
   lastMentionedCandidate: null,
-  slotValues: {},
-  composerState: null,
   editedPromptIds: new Set(),
 
   setSessionId: (id) => set({ sessionId: id }),
@@ -67,8 +61,6 @@ export const useSessionStore = create<SessionStore>((set) => ({
   setUseCockpitV3: (v) => set({ useCockpitV3: v }),
   setCurrentSpeaker: (role) => set({ currentSpeaker: role }),
   setLastMentionedCandidate: (name) => set({ lastMentionedCandidate: name }),
-  setSlotValues: (slots) => set({ slotValues: slots }),
-  setComposerState: (s) => set({ composerState: s }),
   markPromptEdited: (id) =>
     set((state) => {
       const next = new Set(state.editedPromptIds);
@@ -88,8 +80,6 @@ export const useSessionStore = create<SessionStore>((set) => ({
       useCockpitV3: true,
       currentSpeaker: null,
       lastMentionedCandidate: null,
-      slotValues: {},
-      composerState: null,
       editedPromptIds: new Set(),
     }),
 }));

@@ -9,6 +9,7 @@ __pycache__/
 .ruff_cache/
 
 # --- Node / frontend ---
+node_modules
 node_modules/
 frontend/dist/
 dist/

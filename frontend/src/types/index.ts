@@ -54,31 +54,6 @@ export interface AICaption {
   source?: string;
 }
 
-export type Framing = string;
-export type Angle = string;
-
-export interface SlotMap {
-  [key: string]: string;
-}
-
-export interface ComposerState {
-  framing: Framing;
-  target: "A" | "B" | "C";
-  angle: Angle;
-  resolved: string;
-}
-
-export interface PromptCardData {
-  id: string;
-  archetype?: number;
-  title: string;
-  template?: string;
-  slot_bindings?: Record<string, string>;
-  resolved: string;
-  played: boolean;
-  played_ts?: number;
-}
-
 export interface WSMessage {
   type: string;
   data: Record<string, unknown>;
