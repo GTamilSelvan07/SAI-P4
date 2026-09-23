@@ -1,6 +1,10 @@
 """
 Text-to-speech for Alex's voice.
-Priority: Kokoro (GPU) → Piper (CPU) → Stub.
+Priority: HeadTTS sidecar (Kokoro + visemes) → Kokoro (GPU) → Piper (CPU) → Stub.
+
+Only HeadTTS produces the lipsync timings the browser avatar needs; the others
+return a SpeechAudio with empty timing arrays, so Alex still speaks — the mouth
+just falls back to the frontend's own lipsync module.
 """
 import io
 import logging
@@ -13,9 +17,9 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from math import gcd
-from scipy.signal import resample_poly
 
+from app.audio.headtts import HeadTTSClient
+from app.audio.speech import SpeechAudio, resample_pcm16
 from app.config import config, AUDIO_SAMPLE_RATE
 
 log = logging.getLogger(__name__)
@@ -76,8 +80,8 @@ class KokoroTTS:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self.synthesize, text)
 
-    def get_pcm16(self, text: str) -> Optional[bytes]:
-        """Synthesize and return raw PCM16 bytes at AUDIO_SAMPLE_RATE."""
+    def synthesize_speech(self, text: str) -> Optional[SpeechAudio]:
+        """Synthesize to a SpeechAudio at 24kHz. Kokoro produces no timings."""
         if not self._available or self._pipeline is None:
             return None
 
@@ -90,25 +94,26 @@ class KokoroTTS:
             if not audio_chunks:
                 return None
 
-            # Concatenate all chunks
+            # Concatenate all chunks and convert float32 [-1, 1] to PCM16 bytes
             audio_24k = np.concatenate(audio_chunks)
+            pcm_24k = np.clip(audio_24k * 32767, -32768, 32767).astype(np.int16).tobytes()
 
-            # Resample from 24kHz to AUDIO_SAMPLE_RATE (16kHz) with proper anti-aliasing
-            if self.KOKORO_SAMPLE_RATE != AUDIO_SAMPLE_RATE:
-                g = gcd(AUDIO_SAMPLE_RATE, self.KOKORO_SAMPLE_RATE)
-                audio_resampled = resample_poly(
-                    audio_24k, AUDIO_SAMPLE_RATE // g, self.KOKORO_SAMPLE_RATE // g
-                )
-            else:
-                audio_resampled = audio_24k
-
-            # Convert float32 [-1, 1] to PCM16 bytes
-            pcm16 = np.clip(audio_resampled * 32767, -32768, 32767).astype(np.int16)
-            return pcm16.tobytes()
+            return SpeechAudio(
+                pcm16=pcm_24k,
+                pcm16_pipeline=resample_pcm16(
+                    pcm_24k, self.KOKORO_SAMPLE_RATE, AUDIO_SAMPLE_RATE
+                ),
+                sample_rate=self.KOKORO_SAMPLE_RATE,
+            )
 
         except Exception as e:
             log.warning(f"Kokoro TTS synthesis failed: {e}")
             return None
+
+    def get_pcm16(self, text: str) -> Optional[bytes]:
+        """Synthesize and return raw PCM16 bytes at AUDIO_SAMPLE_RATE."""
+        speech = self.synthesize_speech(text)
+        return speech.pcm16_pipeline if speech else None
 
 
 class PiperTTS:
@@ -145,8 +150,8 @@ class PiperTTS:
     def available(self) -> bool:
         return self._available
 
-    def synthesize(self, text: str) -> Optional[bytes]:
-        """Synthesize text to PCM16 WAV bytes."""
+    def synthesize_speech(self, text: str) -> Optional[SpeechAudio]:
+        """Synthesize to a SpeechAudio at Piper's native rate. No timings."""
         if not self._available:
             return None
         try:
@@ -156,23 +161,28 @@ class PiperTTS:
             )
             if result.returncode != 0 or not result.stdout:
                 return None
-            # Resample to pipeline rate (AUDIO_SAMPLE_RATE) — header always claims 16 kHz
-            frames = result.stdout
-            if config.tts.sample_rate != AUDIO_SAMPLE_RATE:
-                raw = np.frombuffer(frames, dtype=np.int16).astype(np.float64)
-                g = gcd(AUDIO_SAMPLE_RATE, config.tts.sample_rate)
-                resampled = resample_poly(raw, AUDIO_SAMPLE_RATE // g, config.tts.sample_rate // g)
-                frames = np.clip(resampled, -32768, 32767).astype(np.int16).tobytes()
-            wav_buffer = io.BytesIO()
-            with wave.open(wav_buffer, "wb") as wf:
-                wf.setnchannels(1)
-                wf.setsampwidth(2)
-                wf.setframerate(AUDIO_SAMPLE_RATE)
-                wf.writeframes(frames)
-            return wav_buffer.getvalue()
+            native_rate = config.tts.sample_rate
+            return SpeechAudio(
+                pcm16=result.stdout,
+                pcm16_pipeline=resample_pcm16(result.stdout, native_rate, AUDIO_SAMPLE_RATE),
+                sample_rate=native_rate,
+            )
         except Exception as e:
-            log.warning(f"Piper TTS synthesize failed: {e}")
+            log.warning(f"Piper TTS synthesis failed: {e}")
             return None
+
+    def synthesize(self, text: str) -> Optional[bytes]:
+        """Synthesize text to PCM16 WAV bytes (at AUDIO_SAMPLE_RATE)."""
+        pcm = self.get_pcm16(text)
+        if pcm is None:
+            return None
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(AUDIO_SAMPLE_RATE)
+            wf.writeframes(pcm)
+        return wav_buffer.getvalue()
 
     async def synthesize_async(self, text: str) -> Optional[bytes]:
         """Run TTS in thread pool."""
@@ -180,26 +190,9 @@ class PiperTTS:
         return await loop.run_in_executor(None, self.synthesize, text)
 
     def get_pcm16(self, text: str) -> Optional[bytes]:
-        """Synthesize and return raw PCM16 bytes (no WAV header)."""
-        if not self._available:
-            return None
-        try:
-            result = subprocess.run(
-                ["piper", "--model", self._model, "--output_raw"],
-                input=text.encode("utf-8"), capture_output=True, timeout=10,
-            )
-            if result.returncode != 0 or not result.stdout:
-                return None
-            # Resample from Piper native rate to pipeline rate if different
-            if config.tts.sample_rate != AUDIO_SAMPLE_RATE:
-                raw = np.frombuffer(result.stdout, dtype=np.int16).astype(np.float64)
-                g = gcd(AUDIO_SAMPLE_RATE, config.tts.sample_rate)
-                resampled = resample_poly(raw, AUDIO_SAMPLE_RATE // g, config.tts.sample_rate // g)
-                return np.clip(resampled, -32768, 32767).astype(np.int16).tobytes()
-            return result.stdout
-        except Exception as e:
-            log.warning(f"Piper TTS get_pcm16 failed: {e}")
-            return None
+        """Synthesize and return raw PCM16 bytes at AUDIO_SAMPLE_RATE."""
+        speech = self.synthesize_speech(text)
+        return speech.pcm16_pipeline if speech else None
 
 
 class StubTTS:
@@ -222,10 +215,23 @@ class StubTTS:
         duration_samples = AUDIO_SAMPLE_RATE * 2
         return b"\x00\x00" * duration_samples
 
+    def synthesize_speech(self, text: str) -> Optional[SpeechAudio]:
+        """Two seconds of silence at the pipeline rate. No timings."""
+        pcm = self.get_pcm16(text)
+        return SpeechAudio(
+            pcm16=pcm, pcm16_pipeline=pcm, sample_rate=AUDIO_SAMPLE_RATE
+        )
 
-def create_tts() -> KokoroTTS | PiperTTS | StubTTS:
-    """Factory: create the best available TTS. Kokoro (GPU) → Piper (CPU) → Stub."""
-    # Try Kokoro first (GPU)
+
+def create_tts() -> HeadTTSClient | KokoroTTS | PiperTTS | StubTTS:
+    """Factory: create the best available TTS.
+    HeadTTS sidecar → Kokoro (GPU) → Piper (CPU) → Stub."""
+    # Try the HeadTTS sidecar first — the only engine that returns visemes
+    headtts = HeadTTSClient()
+    if headtts.check_available():
+        return headtts
+
+    # Fall back to in-process Kokoro (GPU) — same voice, no timings
     kokoro = KokoroTTS()
     if kokoro.check_available():
         return kokoro

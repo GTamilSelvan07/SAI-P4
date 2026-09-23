@@ -1,6 +1,7 @@
 """
 Experiment configuration. All settings in one place.
 """
+import os
 from pathlib import Path
 from enum import Enum
 from pydantic import BaseModel
@@ -92,8 +93,8 @@ C3_ANCHORING_ASSIGNMENT = "incorrect"
 
 class OllamaConfig(BaseModel):
     base_url: str = "http://localhost:11434"
-    model: str = "gemma4:26b"
-    quality_gate_model: str = "gemma4:26b"  # can use smaller model
+    model: str = "qwen3:8b"
+    quality_gate_model: str = "qwen3:8b"  # same model: avoids VRAM swap on an 8 GB card
     timeout_seconds: float = 15.0
     temperature: float = 0.7
     num_gpu: int = 999
@@ -107,10 +108,24 @@ class TTSConfig(BaseModel):
     kokoro_voice: str = "af_heart"   # Kokoro voice ID
 
 
+class HeadTTSConfig(BaseModel):
+    """HeadTTS sidecar — a Node service wrapping Kokoro that also returns
+    word- and viseme-level timings for the browser avatar. Runs alongside
+    uvicorn and Ollama; see docs/SETUP.md. Falls back to in-process Kokoro
+    when unreachable, at the cost of losing the timings."""
+    enabled: bool = True
+    url: str = os.environ.get("HEADTTS_URL", "http://localhost:8882")
+    voice: str = "af_heart"          # must match TTSConfig.kokoro_voice — same stimulus
+    language: str = "en-us"
+    speed: float = 1.0
+    sample_rate: int = 24000         # HeadTTS `tts.audioSampleRate` default
+    timeout_seconds: float = 10.0
+
+
 class TranscriptionConfig(BaseModel):
-    model_size: str = "medium.en"    # faster-whisper fallback model
-    device: str = "auto"
-    compute_type: str = "default"
+    model_size: str = "base.en"      # faster-whisper fallback model
+    device: str = "cpu"              # GPU is fully occupied by the Ollama model
+    compute_type: str = "int8"
     vad_threshold: float = 0.5
     chunk_length_seconds: float = 5.0
     nemotron_model: str = "nvidia/nemotron-speech-streaming-en-0.6b"
@@ -166,8 +181,6 @@ FAILSAFE_TIMEOUT_SECONDS = 15.0  # auto-play failsafe if LLM exceeds this
 
 # ── LiveKit ───────────────────────────────────────────────────────────────
 
-import os
-
 class LiveKitConfig(BaseModel):
     url: str = os.environ.get("LIVEKIT_URL", "ws://localhost:7880")
     api_url: str = os.environ.get("LIVEKIT_API_URL", "http://localhost:7880")
@@ -180,6 +193,7 @@ class LiveKitConfig(BaseModel):
 class ExperimentConfig(BaseModel):
     ollama: OllamaConfig = OllamaConfig()
     tts: TTSConfig = TTSConfig()
+    headtts: HeadTTSConfig = HeadTTSConfig()
     transcription: TranscriptionConfig = TranscriptionConfig()
     participant_audio: ParticipantAudioConfig = ParticipantAudioConfig()
     triggers: TriggerConfig = TriggerConfig()
