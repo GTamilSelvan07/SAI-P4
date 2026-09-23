@@ -201,6 +201,7 @@ VALID_MSG_TYPES = {
     "posttask_complete", "survey_response", "decision_vote", "preference_vote",
     "researcher_failsafe", "researcher_advance", "researcher_flag",
     "prompt_composed", "prompt_live_tts_play",
+    "avatar_speech_started", "avatar_speech_ended",
 }
 
 # Allowed annotation tags. Free-form note travels alongside.
@@ -395,6 +396,42 @@ async def _handle_ws_message(session: ActiveSession, session_id: str, role: str,
             condition=session.meta.conditions[0] if session.meta.conditions else None,
             category=category,
         ))
+
+    elif msg_type in ("avatar_speech_started", "avatar_speech_ended"):
+        # When Alex was actually heard, reported by the client that played it.
+        # The ai_intervention event and marker fire when the text is generated;
+        # the avatar then adds fetch, decode and render delay on top, so the
+        # honest onset can only come from the browser. Both are kept — which one
+        # the analysis uses is its own call.
+        #
+        # P1 and P2 each report their own playback, so expect one event per
+        # client per utterance, distinguished by `speaker`.
+        #
+        # The marker is stamped on arrival here, not by the client: a browser
+        # clock cannot be compared to the physiology stream without sync. Any
+        # client-supplied `client_ts` is kept in `extra` for diagnostics only.
+        payload = data.get("data", {}) or {}
+        utterance_id = payload.get("utterance_id") or ""
+        if not utterance_id:
+            log.warning(f"[WS] {msg_type} from {role} in {session_id} without utterance_id")
+            return
+        started = msg_type == "avatar_speech_started"
+        phase, condition, task_id = _event_context(session_id)
+        session.event_logger.log(EventEntry(
+            type=EventType.AVATAR_SPEECH_START if started else EventType.AVATAR_SPEECH_END,
+            phase=phase,
+            condition=condition,
+            speaker=role,
+            extra={
+                "utterance_id": utterance_id,
+                "task_id": task_id,
+                "client_ts": payload.get("client_ts"),
+            },
+        ))
+        session.lsl_logger.push(
+            "avatar_speech_start" if started else "avatar_speech_end",
+            f"{role}:{utterance_id}",
+        )
 
     elif msg_type == "researcher_advance":
         orch = orchestrator_registry.get(session_id)

@@ -16,6 +16,10 @@ class EventType(str, Enum):
     AI_INTERVENTION = "ai_intervention"
     AI_QUALITY_GATE_FAIL = "ai_quality_gate_fail"
     AI_TIMEOUT = "ai_timeout"
+    # Client-reported playback boundaries. AI_INTERVENTION is logged when the
+    # text is generated; these are when a participant actually heard it.
+    AVATAR_SPEECH_START = "avatar_speech_start"
+    AVATAR_SPEECH_END = "avatar_speech_end"
     FAILSAFE_OVERRIDE = "failsafe_override"
     EMERGENCY_STOP = "emergency_stop"
     PARTICIPANT_JOIN = "participant_join"
