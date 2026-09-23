@@ -19,6 +19,7 @@ import wave
 from typing import Optional
 
 from app.audio.speech import SpeechAudio
+from app.audio.utterances import utterance_cache
 from app.config import AUDIO_CHANNELS, AUDIO_SAMPLE_RATE
 
 log = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ def wav_bytes(pcm: bytes, sample_rate: int) -> Optional[bytes]:
 
 def build_alex_speaking(
     *,
+    session_id: str,
     text: str,
     source: str,
     trigger: str,
@@ -77,8 +79,14 @@ def build_alex_speaking(
         sample_rate = AUDIO_SAMPLE_RATE
         lipsync = None
 
+    uid = utterance_id or new_utterance_id()
+
+    # `audio_url` is the preferred source; `audio` is the same audio as a base64
+    # WAV, kept during the migration so the current player keeps working.
+    audio_url = None
     audio_b64 = None
     if pcm:
+        audio_url = utterance_cache.put(session_id, uid, pcm, sample_rate)
         wav = wav_bytes(pcm, sample_rate)
         if wav is not None:
             audio_b64 = base64.b64encode(wav).decode("ascii")
@@ -87,10 +95,8 @@ def build_alex_speaking(
         "type": "alex_speaking",
         "data": {
             "text": text,
-            "utterance_id": utterance_id or new_utterance_id(),
-            # Filled in once the utterance is in the audio cache; until then the
-            # base64 WAV below is the only source.
-            "audio_url": None,
+            "utterance_id": uid,
+            "audio_url": audio_url,
             "audio": audio_b64,
             "audio_sample_rate": sample_rate,
             "lipsync": lipsync,

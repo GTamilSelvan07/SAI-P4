@@ -3,7 +3,7 @@ Session management API routes.
 """
 import logging
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from pydantic import BaseModel
 
 from app.config import config, Condition, RESEARCHER_API_KEY
@@ -15,6 +15,7 @@ from app.session.orchestrator_registry import orchestrator_registry
 from app.models import TranscriptEntry
 from app.ws.hub import ws_manager
 from app.audio.manager import audio_registry
+from app.audio.utterances import utterance_cache
 from app.tasks import task_registry
 
 log = logging.getLogger("sessions")
@@ -395,6 +396,32 @@ async def get_recording_status(session_id: str):
             "P2": {"active": False, "bytes_written": 0, "last_chunk_age_s": None, "first_chunk_at": None},
         }
     return mgr.status()
+
+
+@router.get("/sessions/{session_id}/utterances/{utterance_id}.pcm")
+async def get_utterance_audio(session_id: str, utterance_id: str):
+    """Raw PCM16 LE mono for one of Alex's utterances.
+
+    Keeps ~770 KB of base64 per utterance off the WebSocket that also carries
+    transcripts and control messages, and lets the frontend decode straight
+    into an AudioContext. The sample rate is whatever the matching
+    `alex_speaking` frame reported in `audio_sample_rate`; it is repeated in
+    `X-Sample-Rate` so the response stands on its own.
+
+    Buffers are in memory and bounded, so a stale id 404s. The frame's base64
+    `audio` field remains the fallback until the avatar ships.
+    """
+    cached = utterance_cache.get(session_id, utterance_id)
+    if cached is None:
+        raise HTTPException(404, "Unknown or expired utterance")
+    return Response(
+        content=cached.pcm,
+        media_type="application/octet-stream",
+        headers={
+            "X-Sample-Rate": str(cached.sample_rate),
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.get("/sessions/{session_id}/task/{role}")

@@ -43,17 +43,32 @@ without them Alex still speaks, the frontend just falls back to its own lipsync.
 
 ```bash
 git clone https://github.com/met4citizen/HeadTTS
-cd HeadTTS && npm install && npm start     # listens on :8882
+cd HeadTTS && npm install
 ```
 
-Keep it running alongside uvicorn and Ollama. The backend probes it on facilitator
-start and silently falls back to in-process Kokoro when it is unreachable — watch
-the startup log line for which engine was picked.
+**Install Alex's voice.** HeadTTS ships only `af_bella` and `am_fenrir`, but Alex
+uses `af_heart` (`TTSConfig.kokoro_voice`). Fetch it into HeadTTS's `voices/`
+before first start:
 
-Settings live in `HeadTTSConfig` in `backend/app/config.py`; `HEADTTS_URL`
-overrides the address. **`headtts.voice` must match `tts.kokoro_voice`** — the two
-engines are interchangeable only while the voice is identical, and changing Alex's
-voice partway through data collection is a stimulus change across conditions.
+```bash
+curl -L -o voices/af_heart.bin \
+  https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX-timestamped/resolve/main/voices/af_heart.bin
+npm start                                  # listens on :8882
+```
+
+**`headtts.voice` must match `tts.kokoro_voice`.** The two engines are
+interchangeable only while the voice is identical — changing Alex's voice partway
+through data collection is a stimulus change across conditions. Note that HeadTTS
+runs the ONNX build of Kokoro rather than the Python package, so the waveform is
+close but not bit-identical; if pilot data already exists, listen to both before
+committing to the switch.
+
+Keep it running alongside uvicorn and Ollama. The backend probes it on facilitator
+start and silently falls back to in-process Kokoro when it is unreachable or the
+voice is missing — watch the startup log line for which engine was picked.
+
+Other settings live in `HeadTTSConfig` in `backend/app/config.py`; `HEADTTS_URL`
+overrides the address.
 
 ## 4. HTTPS certificates (LAN use)
 

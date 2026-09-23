@@ -118,6 +118,7 @@ class SessionOrchestrator:
 
             # Broadcast text + audio + lipsync timings via JSON WebSocket
             await ws_manager.broadcast(self.session_id, build_alex_speaking(
+                session_id=self.session_id,
                 text=resp.text,
                 speech=resp.speech,
                 audio_pcm=resp.audio_pcm,

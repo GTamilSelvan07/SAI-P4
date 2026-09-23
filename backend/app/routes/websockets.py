@@ -385,6 +385,7 @@ async def _handle_ws_message(session: ActiveSession, session_id: str, role: str,
                 log.warning(f"[WS] failsafe Alex audio write failed for {session_id}: {e}")
 
         await ws_manager.broadcast(session_id, build_alex_speaking(
+            session_id=session_id,
             text=text,
             speech=speech,
             audio_pcm=audio_pcm,
