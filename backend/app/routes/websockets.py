@@ -361,7 +361,8 @@ async def _handle_ws_message(session: ActiveSession, session_id: str, role: str,
             from app.audio.failsafe import failsafe_manager
             if not failsafe_manager.loaded:
                 failsafe_manager.load_clips()
-            audio_pcm = failsafe_manager.get_clip_bytes(category)
+            speech = failsafe_manager.get_clip_speech(category)
+            audio_pcm = speech.pcm16_pipeline if speech else None
             if not text:
                 text = failsafe_manager.get_clip_text(category) or ""
         except Exception as e:

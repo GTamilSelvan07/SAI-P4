@@ -270,9 +270,11 @@ class FacilitatorEngine:
 
         tts_pcm = speech.pcm16_pipeline if speech else None
         if tts_pcm is None:
-            # TTS failed — use failsafe audio but keep the LLM text
-            failsafe_audio = failsafe_manager.get_failsafe_for_condition(self._condition)
-            tts_pcm = failsafe_audio  # may still be None if clips missing
+            # TTS failed — use failsafe audio but keep the LLM text. The clip's
+            # visemes describe the clip, which is what participants actually
+            # hear, so they stay attached even though the caption differs.
+            speech = failsafe_manager.get_failsafe_speech_for_condition(self._condition)
+            tts_pcm = speech.pcm16_pipeline if speech else None  # None if clips missing
 
         self._ctx.last_response = text
         self._ctx.intervention_count += 1
@@ -402,8 +404,8 @@ class FacilitatorEngine:
     async def _failsafe_response(self, trigger: str, failure_mode: str) -> FacilitatorResponse:
         """Return a failsafe clip when LLM fails.
         Tries pre-recorded WAV clips first, falls back to live TTS synthesis."""
-        speech: Optional[SpeechAudio] = None
-        audio_bytes = failsafe_manager.get_failsafe_for_condition(self._condition)
+        speech = failsafe_manager.get_failsafe_speech_for_condition(self._condition)
+        audio_bytes = speech.pcm16_pipeline if speech else None
 
         self._event_logger.log(EventEntry(
             type=EventType.AI_TIMEOUT,

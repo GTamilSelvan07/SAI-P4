@@ -3,9 +3,19 @@ Generate failsafe audio clips using the app's offline TTS factory.
 Run before data collection:
 
     PYTHONPATH=backend python3 backend/failsafe_clips/generate_clips.py
+
+Each clip gets a `.wav`, a `.txt` with its text, and — when the engine produces
+timings — a `.json` sidecar with the word and viseme arrays for that exact
+recording. The avatar needs the sidecars, so start the HeadTTS sidecar first;
+without it the clips are audible but the mouth falls back to frontend lipsync.
+
+Timings and audio must come from the same synthesis run, so regenerating one
+means regenerating both. Existing clips are skipped unless you pass --force.
 """
 from __future__ import annotations
 
+import argparse
+import json
 import sys
 import wave
 from pathlib import Path
@@ -14,8 +24,9 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
+from app.audio.speech import SpeechAudio  # noqa: E402
 from app.audio.tts import create_tts  # noqa: E402
-from app.config import AUDIO_CHANNELS, AUDIO_SAMPLE_RATE  # noqa: E402
+from app.config import AUDIO_CHANNELS  # noqa: E402
 
 
 CLIPS_DIR = Path(__file__).parent
@@ -60,42 +71,90 @@ CLIP_TEMPLATES = {
 }
 
 
-def _write_wav(path: Path, pcm: bytes) -> None:
+def _write_wav(path: Path, pcm: bytes, sample_rate: int) -> None:
     with wave.open(str(path), "wb") as wf:
         wf.setnchannels(AUDIO_CHANNELS)
         wf.setsampwidth(2)
-        wf.setframerate(AUDIO_SAMPLE_RATE)
+        wf.setframerate(sample_rate)
         wf.writeframes(pcm)
 
 
+def _write_sidecar(path: Path, speech: SpeechAudio, text: str) -> None:
+    """Write the viseme sidecar for a clip.
+
+    `duration_ms` lets the loader reject a sidecar that no longer describes its
+    WAV, which is what happens when only one of the pair is regenerated.
+    """
+    duration_ms = round(len(speech.pcm16) / 2 / speech.sample_rate * 1000)
+    path.write_text(json.dumps({
+        "text": text,
+        "sample_rate": speech.sample_rate,
+        "duration_ms": duration_ms,
+        "words": speech.words,
+        "wtimes": speech.wtimes,
+        "wdurations": speech.wdurations,
+        "visemes": speech.visemes,
+        "vtimes": speech.vtimes,
+        "vdurations": speech.vdurations,
+    }, indent=1), encoding="utf-8")
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--force", action="store_true",
+        help="regenerate clips that already exist (needed to add viseme sidecars)",
+    )
+    args = parser.parse_args()
+
     tts = create_tts()
+    print(f"Engine: {type(tts).__name__}")
     total = 0
     failed = 0
+    untimed = 0
 
     for category, texts in CLIP_TEMPLATES.items():
         for i, text in enumerate(texts):
-            filename = f"{category}_{i + 1:02d}.wav"
-            output_path = CLIPS_DIR / filename
+            stem = f"{category}_{i + 1:02d}"
+            wav_path = CLIPS_DIR / f"{stem}.wav"
+            json_path = CLIPS_DIR / f"{stem}.json"
+            txt_path = CLIPS_DIR / f"{stem}.txt"
 
-            if output_path.exists():
-                print(f"  SKIP {filename} (already exists)")
+            if wav_path.exists() and not args.force:
+                if not json_path.exists():
+                    print(f"  SKIP {stem} (exists, but has NO viseme sidecar — rerun with --force)")
+                    untimed += 1
+                else:
+                    print(f"  SKIP {stem} (already exists)")
                 total += 1
                 continue
 
-            pcm = tts.get_pcm16(text)
-            if not pcm:
-                print(f"  FAIL {filename} - offline TTS returned no audio")
+            speech = tts.synthesize_speech(text)
+            if speech is None or not speech.pcm16:
+                print(f"  FAIL {stem} - offline TTS returned no audio")
                 failed += 1
-                txt_path = CLIPS_DIR / f"{category}_{i + 1:02d}.txt"
-                txt_path.write_text(text, encoding="utf-8")
                 continue
 
-            _write_wav(output_path, pcm)
-            print(f"  OK   {filename}")
+            _write_wav(wav_path, speech.pcm16, speech.sample_rate)
+            # Rewritten only alongside the audio, so the .txt always describes
+            # the recording rather than whatever the template now says.
+            txt_path.write_text(text, encoding="utf-8")
+            if speech.has_lipsync:
+                _write_sidecar(json_path, speech, text)
+                print(f"  OK   {stem} ({speech.sample_rate}Hz, {len(speech.visemes)} visemes)")
+            else:
+                json_path.unlink(missing_ok=True)  # never leave stale timings beside new audio
+                print(f"  WARN {stem} ({speech.sample_rate}Hz, no timings — engine returned none)")
+                untimed += 1
             total += 1
 
-    print(f"\nGenerated {total} clips, {failed} failed")
+    print(f"\nGenerated {total} clips, {failed} failed, {untimed} without viseme sidecars")
+    if untimed:
+        print(
+            "Clips without sidecars still play, but the avatar's mouth falls back to\n"
+            "frontend lipsync — and these clips play on every LLM timeout. Start the\n"
+            "HeadTTS sidecar (docs/SETUP.md step 3) and rerun with --force."
+        )
     return 0 if failed == 0 else 1
 
 
