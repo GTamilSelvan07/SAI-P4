@@ -73,6 +73,9 @@ class HeadTTSClient:
         if self._client is None:
             self._client = httpx.Client(timeout=httpx.Timeout(self._cfg.timeout_seconds))
 
+        # Failures during check_available() are an expected fallback, not a fault
+        warn = log.warning if self._available else log.debug
+
         try:
             resp = self._client.post(
                 f"{self._cfg.url}/v1/synthesize",
@@ -87,17 +90,17 @@ class HeadTTSClient:
             resp.raise_for_status()
             data = resp.json()
         except httpx.TimeoutException:
-            log.warning(f"[HeadTTS] synthesize timed out after {self._cfg.timeout_seconds}s")
+            warn(f"[HeadTTS] synthesize timed out after {self._cfg.timeout_seconds}s")
             return None
         except httpx.HTTPStatusError as e:
-            log.warning(f"[HeadTTS] HTTP {e.response.status_code}: {e.response.text[:200]}")
+            warn(f"[HeadTTS] HTTP {e.response.status_code}: {e.response.text[:200]}")
             return None
         except Exception as e:
-            log.warning(f"[HeadTTS] synthesize failed: {type(e).__name__}: {e}")
+            warn(f"[HeadTTS] synthesize failed: {type(e).__name__}: {e}")
             return None
 
         if data.get("error"):
-            log.warning(f"[HeadTTS] sidecar error: {data['error']}")
+            warn(f"[HeadTTS] sidecar error: {data['error']}")
             return None
 
         return speech_from_response(data, self._cfg.sample_rate)

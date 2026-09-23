@@ -25,6 +25,7 @@ from app.session.state_machine import (
 )
 from app.ai.facilitator import FacilitatorEngine, FacilitatorResponse
 from app.ai.suggestor import ResponseSuggestor
+from app.audio.speech_frame import build_alex_speaking
 from app.ws.hub import ws_manager
 
 
@@ -105,9 +106,7 @@ class SessionOrchestrator:
             return  # No facilitator for C0
 
         async def on_response(resp: FacilitatorResponse):
-            import base64, io, wave
-
-            # Record Alex's audio to disk via audio manager
+            # Record Alex's audio to disk via audio manager (pipeline rate)
             if resp.audio_pcm:
                 from app.audio.manager import audio_registry
                 audio_mgr = audio_registry.get(self.session_id)
@@ -117,33 +116,17 @@ class SessionOrchestrator:
                     except Exception as e:
                         log.debug(f"Alex audio write error: {e}")
 
-            # Encode audio as base64 WAV for browser playback
-            audio_b64 = None
-            if resp.audio_pcm:
-                try:
-                    wav_buf = io.BytesIO()
-                    with wave.open(wav_buf, "wb") as wf:
-                        wf.setnchannels(1)
-                        wf.setsampwidth(2)
-                        wf.setframerate(16000)
-                        wf.writeframes(resp.audio_pcm)
-                    audio_b64 = base64.b64encode(wav_buf.getvalue()).decode("ascii")
-                except Exception as e:
-                    log.warning(f"Failed to encode Alex audio: {e}")
-
-            # Broadcast text + audio via JSON WebSocket
-            await ws_manager.broadcast(self.session_id, {
-                "type": "alex_speaking",
-                "data": {
-                    "text": resp.text,
-                    "audio": audio_b64,
-                    "source": resp.source.value,
-                    "condition": resp.condition,
-                    "trigger": resp.trigger,
-                    "llm_latency_ms": resp.llm_latency_ms,
-                    "tts_latency_ms": resp.tts_latency_ms,
-                },
-            })
+            # Broadcast text + audio + lipsync timings via JSON WebSocket
+            await ws_manager.broadcast(self.session_id, build_alex_speaking(
+                text=resp.text,
+                speech=resp.speech,
+                audio_pcm=resp.audio_pcm,
+                source=resp.source.value,
+                condition=resp.condition,
+                trigger=resp.trigger,
+                llm_latency_ms=resp.llm_latency_ms,
+                tts_latency_ms=resp.tts_latency_ms,
+            ))
 
             # Push facilitator status to researcher dashboard (avoids polling)
             await ws_manager.send_to_researcher(self.session_id, {

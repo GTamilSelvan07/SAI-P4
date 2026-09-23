@@ -16,6 +16,7 @@ from app.session.orchestrator_registry import orchestrator_registry
 from app.models import EventEntry, EventType, AISource
 from app.ws.hub import ws_manager
 from app.audio.manager import audio_registry
+from app.audio.speech_frame import build_alex_speaking
 from app.video.recorder import video_registry
 
 router = APIRouter()
@@ -355,7 +356,7 @@ async def _handle_ws_message(session: ActiveSession, session_id: str, role: str,
         session.lsl_logger.push("failsafe_override", category)
 
         audio_pcm = None
-        audio_b64 = None
+        speech = None
         try:
             from app.audio.failsafe import failsafe_manager
             if not failsafe_manager.loaded:
@@ -370,24 +371,12 @@ async def _handle_ws_message(session: ActiveSession, session_id: str, role: str,
             try:
                 from app.audio.tts import create_tts
                 tts = create_tts()
-                audio_pcm = await asyncio.to_thread(tts.get_pcm16, text)
+                speech = await asyncio.to_thread(tts.synthesize_speech, text)
+                audio_pcm = speech.pcm16_pipeline if speech else None
             except Exception as e:
                 log.warning(f"[WS] failsafe TTS failed for {category}: {e}")
 
         if audio_pcm:
-            try:
-                import base64
-                import io
-                import wave
-                wav_buf = io.BytesIO()
-                with wave.open(wav_buf, "wb") as wf:
-                    wf.setnchannels(1)
-                    wf.setsampwidth(2)
-                    wf.setframerate(16000)
-                    wf.writeframes(audio_pcm)
-                audio_b64 = base64.b64encode(wav_buf.getvalue()).decode("ascii")
-            except Exception as e:
-                log.warning(f"[WS] failsafe WAV encode failed for {category}: {e}")
             try:
                 audio_mgr = audio_registry.get(session_id)
                 if audio_mgr:
@@ -395,17 +384,15 @@ async def _handle_ws_message(session: ActiveSession, session_id: str, role: str,
             except Exception as e:
                 log.warning(f"[WS] failsafe Alex audio write failed for {session_id}: {e}")
 
-        await ws_manager.broadcast(session_id, {
-            "type": "alex_speaking",
-            "data": {
-                "text": text,
-                "audio": audio_b64,
-                "source": AISource.FAILSAFE_CLIP.value,
-                "trigger": "researcher",
-                "condition": session.meta.conditions[0] if session.meta.conditions else None,
-                "category": category,
-            },
-        })
+        await ws_manager.broadcast(session_id, build_alex_speaking(
+            text=text,
+            speech=speech,
+            audio_pcm=audio_pcm,
+            source=AISource.FAILSAFE_CLIP.value,
+            trigger="researcher",
+            condition=session.meta.conditions[0] if session.meta.conditions else None,
+            category=category,
+        ))
 
     elif msg_type == "researcher_advance":
         orch = orchestrator_registry.get(session_id)
