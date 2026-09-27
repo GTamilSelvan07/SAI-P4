@@ -15,6 +15,7 @@ declare module "@met4citizen/talkinghead" {
     constructor(container: HTMLElement, options: Record<string, unknown>);
     readonly audioCtx: AudioContext;
     readonly audioReverbNode: ConvolverNode;
+    audioSpeechSource: AudioBufferSourceNode | null;
     readonly lipsync: Record<string, unknown>;
     animQueue: Array<{ template: { name: string } }>;
     showAvatar(avatar: Record<string, unknown>): Promise<void>;
