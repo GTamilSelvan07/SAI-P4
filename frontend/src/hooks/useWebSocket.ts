@@ -30,11 +30,13 @@ export function useWebSocket({ sessionId, role, onMessage }: UseWebSocketOptions
     const ws = new WebSocket(url);
 
     ws.onopen = () => {
+      if (wsRef.current !== ws) return;
       console.log(`[WS] CONNECTED to ${url}`);
       setConnected(true);
       reconnectAttemptsRef.current = 0;
     };
     ws.onclose = (event) => {
+      if (wsRef.current !== ws) return;
       console.log(`[WS] CLOSED code=${event.code} reason="${event.reason}" url=${url}`);
       setConnected(false);
       // Auto-reconnect unless intentionally closed (1000)
@@ -49,10 +51,12 @@ export function useWebSocket({ sessionId, role, onMessage }: UseWebSocketOptions
       }
     };
     ws.onerror = (event) => {
+      if (wsRef.current !== ws) return;
       console.error(`[WS] ERROR on ${url}`, event);
       setConnected(false);
     };
     ws.onmessage = (event) => {
+      if (wsRef.current !== ws) return;
       try {
         const msg = JSON.parse(event.data) as WSMessage;
         console.log(`[WS] MSG ${msg.type}`, msg.data);
@@ -67,8 +71,8 @@ export function useWebSocket({ sessionId, role, onMessage }: UseWebSocketOptions
     return () => {
       console.log(`[WS] Cleanup — closing ${url}`);
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      ws.close(1000);
       wsRef.current = null;
+      ws.close(1000);
     };
   }, [sessionId, role, reconnectCount]);
 

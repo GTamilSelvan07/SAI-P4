@@ -4,6 +4,8 @@ import { useLiveKit } from "../../hooks/useLiveKit";
 import { useAudioStream } from "../../hooks/useAudioStream";
 import { useLocalRecording } from "../../hooks/useLocalRecording";
 import { useTimer } from "../../hooks/useTimer";
+import { useAlexSpeech } from "../../hooks/useAlexSpeech";
+import type { AlexSpeech } from "../../avatar/speech";
 import { useSessionStore } from "../../stores/sessionStore";
 import { VideoFeed } from "../shared/VideoFeed";
 import { AlexAvatar } from "../shared/AlexAvatar";
@@ -33,53 +35,29 @@ export function DiscussionRoom({ sessionId, role }: DiscussionRoomProps) {
   const aiCaption = useSessionStore((s) => s.aiCaption);
   const addParticipantTranscriptLine = useSessionStore((s) => s.addParticipantTranscriptLine);
   const setAICaption = useSessionStore((s) => s.setAICaption);
-  const [alexStatus, setAlexStatus] = useState<"listening" | "speaking" | "monitoring">("listening");
-  const [alexText, setAlexText] = useState("");
   const [p1Speaking, setP1Speaking] = useState(false);
   const [p2Speaking, setP2Speaking] = useState(false);
   const [votes, setVotes] = useState<Record<string, string>>({});
   const [surveySubmitted, setSurveySubmitted] = useState(false);
   const [voteSaved, setVoteSaved] = useState(false);
   const [preferenceChoice, setPreferenceChoice] = useState<string>("");
-  const [audioBlocked, setAudioBlocked] = useState(false);
   const [postTaskUnlocked, setPostTaskUnlocked] = useState(false);
-  const alexTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingAlexAudioRef = useRef<HTMLAudioElement | null>(null);
+  const stoppedRef = useRef(false);
+  const [sessionStopped, setSessionStopped] = useState(false);
+  const sendRef = useRef<(message: WSMessage) => void>(() => {});
+  const alexSpeech = useAlexSpeech(sessionId, (message) => sendRef.current(message));
+  const { enqueue: enqueueSpeech, stop: stopSpeech } = alexSpeech;
+
+  useEffect(() => {
+    stoppedRef.current = false;
+    setSessionStopped(false);
+  }, [sessionId]);
 
   useEffect(() => {
     if (storedSessionId === sessionId) return;
     resetStore();
     setStoreSessionId(sessionId);
   }, [sessionId, storedSessionId, resetStore, setStoreSessionId]);
-
-  // Clear any pending Alex-status timeout on unmount so setState doesn't fire after teardown
-  useEffect(() => {
-    return () => {
-      if (alexTimeoutRef.current) clearTimeout(alexTimeoutRef.current);
-    };
-  }, []);
-
-  // When audio is blocked, listen for any user interaction and retry the cached audio.
-  useEffect(() => {
-    if (!audioBlocked) return;
-    const retry = () => {
-      const cached = pendingAlexAudioRef.current;
-      if (!cached) {
-        setAudioBlocked(false);
-        return;
-      }
-      cached.play().then(() => {
-        setAudioBlocked(false);
-        pendingAlexAudioRef.current = null;
-      }).catch((e) => console.warn("[Alex] retry failed:", e));
-    };
-    document.addEventListener("click", retry, { once: true });
-    document.addEventListener("keydown", retry, { once: true });
-    return () => {
-      document.removeEventListener("click", retry);
-      document.removeEventListener("keydown", retry);
-    };
-  }, [audioBlocked]);
 
   const onMessage = useCallback(
     (msg: WSMessage) => {
@@ -114,11 +92,8 @@ export function DiscussionRoom({ sessionId, role }: DiscussionRoomProps) {
           if (data.role === "P2") setP2Speaking(data.speaking as boolean);
           break;
         case "alex_speaking": {
-          const isClosingClip = data.slot === "skeleton.closing";
-          const finishAlexSpeech = () => {
-            setAlexStatus("monitoring");
-            if (isClosingClip) setPostTaskUnlocked(true);
-          };
+          // C0 is the human-only baseline, even if a stray speech frame arrives.
+          if (stoppedRef.current || data.condition === "C0" || useSessionStore.getState().status?.condition === "C0") break;
           setAICaption({
             text: data.text as string,
             ts: Date.now() / 1000,
@@ -130,33 +105,7 @@ export function DiscussionRoom({ sessionId, role }: DiscussionRoomProps) {
             text: (data.text as string) ?? "",
             confidence: 1,
           });
-          if (alexTimeoutRef.current) clearTimeout(alexTimeoutRef.current);
-          setAlexStatus("speaking");
-          setAlexText(data.text as string);
-          // Play Alex audio (base64 WAV delivered via JSON WebSocket)
-          if (data.audio) {
-            try {
-              const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
-              audio.onended = finishAlexSpeech;
-              audio.play().then(() => {
-                pendingAlexAudioRef.current = null;
-                setAudioBlocked(false);
-              }).catch((err) => {
-                // Autoplay blocked — surface to participant so they can unblock
-                console.warn("[Alex] Audio autoplay blocked:", err?.message);
-                pendingAlexAudioRef.current = audio;
-                setAudioBlocked(true);
-                alexTimeoutRef.current = setTimeout(() => setAlexStatus("monitoring"), 5000);
-              });
-            } catch (e) {
-              console.warn("[Alex] audio construction failed:", e);
-              if (isClosingClip) setPostTaskUnlocked(true);
-            }
-            alexTimeoutRef.current = setTimeout(() => setAlexStatus("monitoring"), 15000);
-          } else {
-            // No audio attached — show text briefly then reset
-            alexTimeoutRef.current = setTimeout(finishAlexSpeech, 5000);
-          }
+          enqueueSpeech(data as unknown as AlexSpeech);
           break;
         }
         case "participant_transcript":
@@ -171,17 +120,24 @@ export function DiscussionRoom({ sessionId, role }: DiscussionRoomProps) {
           break;
         }
         case "emergency_stop":
+          stoppedRef.current = true;
+          setSessionStopped(true);
+          stopSpeech();
           alert("Session stopped by researcher.");
           break;
         case "session_ended":
+          stoppedRef.current = true;
+          setSessionStopped(true);
+          stopSpeech();
           alert("All tasks completed. Thank you for participating!");
           break;
       }
     },
-    [setStatus]
+    [setStatus, setAICaption, addParticipantTranscriptLine, enqueueSpeech, stopSpeech]
   );
 
   const { connected: wsConnected, send } = useWebSocket({ sessionId, role, onMessage });
+  sendRef.current = send;
 
   useEffect(() => {
     const phase = status?.phase;
@@ -263,7 +219,12 @@ export function DiscussionRoom({ sessionId, role }: DiscussionRoomProps) {
 
   // Condition flags
   const isNoAI = status?.condition === "C0";
-  const showAlex = !isNoAI && (status?.phase !== "survey" || !postTaskUnlocked);
+  const showAlex = !!status && !isNoAI && !status.session_ended && !sessionStopped
+    && (status.phase !== "survey" || !postTaskUnlocked);
+
+  useEffect(() => {
+    if (isNoAI || status?.session_ended) stopSpeech();
+  }, [isNoAI, status?.session_ended, stopSpeech]);
 
   // Fetch task info
   const [taskInfo, setTaskInfo] = useState<{
@@ -588,8 +549,12 @@ export function DiscussionRoom({ sessionId, role }: DiscussionRoomProps) {
           {/* AI Assistant */}
           {showAlex && (
             <AlexAvatar
-              status={alexStatus}
-              text={alexStatus === "speaking" ? alexText : undefined}
+              key={sessionId}
+              status={alexSpeech.speaking ? "speaking" : "listening"}
+              text={alexSpeech.speaking ? alexSpeech.text : undefined}
+              onRenderer={alexSpeech.attachRenderer}
+              audioBlocked={alexSpeech.audioBlocked}
+              onEnableAudio={alexSpeech.unlock}
             />
           )}
 
@@ -627,10 +592,11 @@ export function DiscussionRoom({ sessionId, role }: DiscussionRoomProps) {
           Media: {lkError}
         </div>
       )}
-      {audioBlocked && (
+      {(alexSpeech.audioBlocked || alexSpeech.audioError) && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-amber-50 text-amber-800 border border-amber-300 px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg flex items-center gap-2">
           <span aria-hidden="true">{"🔇"}</span>
-          <span>Alex's audio was blocked by your browser. Click anywhere or press a key to enable.</span>
+          <span role="status">{alexSpeech.audioError ?? "Enable audio to hear Alex."}</span>
+          {alexSpeech.audioBlocked && <button onClick={alexSpeech.unlock} className="rounded-md bg-amber-900 px-3 py-1 text-white focus-visible:outline-2 focus-visible:outline-offset-2">Enable audio</button>}
         </div>
       )}
       {taskFetchFailed && status?.task_id && (
