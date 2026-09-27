@@ -51,7 +51,16 @@ export async function createTalkingHeadRenderer(
   if (!gl) throw new Error("3D avatar rendering requires WebGL 2.");
   gl.getExtension("WEBGL_lose_context")?.loseContext();
 
-  const head = new TalkingHead(container, {
+  // Fetch before allocating the renderer so cancellation/timeouts release the
+  // network operation and cannot leave a half-loaded WebGL/audio instance.
+  const response = await fetch(modelUrl, { signal: options.signal });
+  if (!response.ok) throw new Error(`Avatar model could not be loaded (${response.status}).`);
+  const modelBlob = await response.blob();
+  options.signal?.throwIfAborted();
+  const objectUrl = URL.createObjectURL(modelBlob);
+
+  let head: TalkingHead;
+  try { head = new TalkingHead(container, {
     // Static import below makes the English processor part of the Vite build.
     // Upstream's import(moduleName) cannot be discovered by a bundler.
     lipsyncModules: [],
@@ -73,7 +82,10 @@ export async function createTalkingHeadRenderer(
     mixerGainSpeech: 0,
     mixerGainBackground: 0,
     dracoEnabled: false,
-  });
+  }); } catch (error) {
+    URL.revokeObjectURL(objectUrl);
+    throw error;
+  }
 
   let disposed = false;
   const dispose = () => {
@@ -96,7 +108,7 @@ export async function createTalkingHeadRenderer(
     head.lipsync.en = new LipsyncEn();
     head.setMixerGain(0, 0);
     await head.showAvatar({
-      url: modelUrl.href,
+      url: objectUrl,
       ...(options.body ? { body: options.body } : {}),
       avatarMood: "neutral",
       lipsyncLang: "en",
@@ -115,6 +127,8 @@ export async function createTalkingHeadRenderer(
   } catch (error) {
     dispose();
     throw error;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
   }
 
   return {

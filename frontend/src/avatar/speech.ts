@@ -65,17 +65,27 @@ export async function loadSpeechAudio(
   speech: AlexSpeech,
   signal: AbortSignal,
 ): Promise<AudioBuffer | null> {
+  signal.throwIfAborted();
   if (speech.audio_url) {
+    const request = new AbortController();
+    const cancel = () => request.abort();
+    signal.addEventListener("abort", cancel, { once: true });
+    // A slow/unreachable HTTP endpoint must still permit the inline WAV copy.
+    // Keep timeout separate from caller cancellation (stop/session teardown).
+    const timeout = setTimeout(() => request.abort(), 10000);
     try {
       const url = new URL(speech.audio_url, window.location.origin);
       if (url.origin !== window.location.origin || !url.pathname.startsWith("/api/sessions/")) {
         throw new Error("Alex audio URL must belong to this server.");
       }
-      const response = await fetch(url, { signal, cache: "no-store" });
+      const response = await fetch(url, { signal: request.signal, cache: "no-store" });
       if (!response.ok) throw new Error(`Alex audio fetch failed (${response.status}).`);
       return pcmToAudioBuffer(ctx, await response.arrayBuffer(), speech.audio_sample_rate ?? NaN);
     } catch (error) {
       if (signal.aborted || !speech.audio) throw error;
+    } finally {
+      clearTimeout(timeout);
+      signal.removeEventListener("abort", cancel);
     }
   }
   if (!speech.audio) return null;
