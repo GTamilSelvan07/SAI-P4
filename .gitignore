@@ -34,3 +34,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# --- Local working notes and browser verification artifacts ---
+/PROJECT_CONTEXT.md
+/AVATAR_IMPLEMENTATION_REPORT.md
+/.local/

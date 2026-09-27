@@ -91,7 +91,8 @@ All logging is append-only JSONL with flush-on-write — crash-safe by design.
 ## Design notes
 
 - **Local-first / offline.** Ollama LLM, ASR, and TTS all run on the host — no cloud calls during a session.
-- **LiveKit SFU** carries participant video/audio. Alex's voice is delivered as base64 WAV over the JSON WebSocket (the LiveKit Python RTC SDK is not used).
+- **Media transport.** LiveKit carries participant video, with participant audio configurable for the study setup. Alex's native-rate speech is fetched over HTTP using the JSON WebSocket frame; base64 WAV remains a fallback. The LiveKit Python RTC SDK is not used for Alex.
+- **Participant avatar.** TalkingHead renders Alex using the backend HeadTTS speech and timing data, with native-rate audio, queued playback and audio-only fallback. See [`docs/AVATAR_FRONTEND.md`](docs/AVATAR_FRONTEND.md) for setup, model replacement and verification.
 - **One config source.** All experiment parameters live in `backend/app/config.py`.
 - **Single-run sessions.** One session = one condition × one task × 7 phases (`Setup → InfoReading → Preference → P1Opening → P2Opening → OpenDiscussion → Decision → Survey`).
 
