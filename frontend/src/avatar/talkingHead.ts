@@ -131,13 +131,24 @@ export async function createTalkingHeadRenderer(
     URL.revokeObjectURL(objectUrl);
   }
 
+  const stopVisualSpeech = () => {
+    // Upstream stopSpeaking() stops but retains the source's onended callback.
+    // A late callback can reset the NEXT utterance after our audible source
+    // completes. We own the outer queue, so retire this muted source ourselves.
+    const source = head.audioSpeechSource;
+    if (source) source.onended = null;
+    head.stopSpeaking();
+    if (source) source.disconnect();
+    head.audioSpeechSource = null;
+  };
+
   return {
     audioContext: head.audioCtx,
     speak(buffer, lipsync) {
       if (disposed) return;
       // The controller invokes this immediately after starting its own source
       // on audioContext. isRaw avoids upstream pre-roll, pauses and gestures.
-      head.stopSpeaking();
+      stopVisualSpeech();
       if (!lipsync) return; // Do not fabricate timings from the transcript.
       head.speakAudio({ audio: buffer, ...lipsync }, {
         lipsyncLang: "en",
@@ -145,7 +156,7 @@ export async function createTalkingHeadRenderer(
       });
     },
     stop() {
-      if (!disposed) head.stopSpeaking();
+      if (!disposed) stopVisualSpeech();
     },
     dispose,
   };
