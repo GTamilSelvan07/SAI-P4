@@ -20,6 +20,7 @@ class AudioSource {
 }
 
 class AudioContextDouble {
+  currentTime = 12.5;
   state: AudioContextState = "running";
   destination = {};
   sources: AudioSource[] = [];
@@ -214,7 +215,8 @@ describe("SpeechPlayer", () => {
     await settle();
 
     expect(createContext).not.toHaveBeenCalled();
-    expect(renderer.speak).toHaveBeenCalledWith(context.decoded, null);
+    expect(renderer.speak).toHaveBeenCalledWith(context.decoded, null, context.currentTime);
+    expect(context.sources[0].start).toHaveBeenCalledWith(context.currentTime);
     expect(context.sources[0].playing).toBe(true);
     expect(callbacks.onStart).toHaveBeenCalledExactlyOnceWith(frame);
     expect(callbacks.onError).toHaveBeenLastCalledWith(null);
@@ -230,7 +232,7 @@ describe("SpeechPlayer", () => {
       lipsync: { words: ["Hello"], wtimes: [0], wdurations: [350], visemes: [], vtimes: [], vdurations: [] },
     }));
     await settle();
-    expect(renderer.speak).toHaveBeenCalledWith(context.decoded, { words: ["Hello"], wtimes: [0], wdurations: [350] });
+    expect(renderer.speak).toHaveBeenCalledWith(context.decoded, { words: ["Hello"], wtimes: [0], wdurations: [350] }, context.currentTime);
   });
 
   it("plays audio with invalid animation metadata without inventing timings", async () => {
@@ -239,7 +241,7 @@ describe("SpeechPlayer", () => {
     player.attachRenderer(renderer);
     player.enqueue(speech("invalid-metadata", { lipsync: { words: ["Hello"], wtimes: [], wdurations: [] } }));
     await settle();
-    expect(renderer.speak).toHaveBeenCalledWith(context.decoded, null);
+    expect(renderer.speak).toHaveBeenCalledWith(context.decoded, null, context.currentTime);
     expect(context.sources[0].playing).toBe(true);
   });
 

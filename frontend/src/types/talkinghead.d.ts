@@ -17,6 +17,7 @@ declare module "@met4citizen/talkinghead" {
     readonly audioReverbNode: ConvolverNode;
     audioSpeechSource: AudioBufferSourceNode | null;
     readonly lipsync: Record<string, unknown>;
+    readonly mtAvatar: Record<string, { realtime: number | null; newvalue: number | null; needsUpdate: boolean }>;
     animQueue: Array<{ template: { name: string } }>;
     showAvatar(avatar: Record<string, unknown>): Promise<void>;
     playPose(name: string, onProgress: null, duration: number): Promise<void>;
