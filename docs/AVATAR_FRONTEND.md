@@ -52,11 +52,15 @@ avatar are served locally; no CDN request is required during participant use.
 - `lipsync`: word and optional Oculus viseme arrays in milliseconds. Valid word
   timings can derive visemes using the bundled English module. Empty/invalid
   viseme arrays are omitted so TalkingHead can take that path.
-- Missing or invalid timing data retains audio with a neutral mouth. Timing is
-  never invented from captions, which may differ from a backend failsafe clip.
+- Missing or invalid timing data uses audio-driven mouth opening. The renderer
+  measures the actual decoded buffer in 20 ms windows and follows the audible
+  source's AudioContext clock, closing during pauses and at completion/stop.
+  This is approximate volume-driven movement, not phoneme recognition. Timing
+  is never invented from captions, which may differ from a failsafe recording.
 - The player queues utterances in arrival order and ignores recently seen IDs.
-  Only one source produces audible output. TalkingHead animates a muted copy
-  on the same AudioContext, with automatic speech gestures/pre-roll disabled.
+  Only one source produces audible output. For timed speech, TalkingHead
+  animates a muted copy on the same AudioContext, with automatic speech
+  gestures/pre-roll disabled. Untimed speech drives its mouth morph directly.
 - `avatar_speech_started` is sent after the audible source starts on a running
   context. `avatar_speech_ended` follows its `onended` callback or an explicit
   stop. Both carry `utterance_id` and a diagnostic `client_ts` in epoch seconds.
@@ -74,6 +78,7 @@ avatar are served locally; no CDN request is required during participant use.
 | --- | --- |
 | `avatar/speech.ts` | HeadTTS frame types, timing validation, PCM/WAV loading |
 | `avatar/SpeechPlayer.ts` | FIFO, autoplay, cancellation, deduplication, playback callbacks |
+| `avatar/mouthEnvelope.ts` | Sample-rate-aware audio-energy mouth fallback when alignment is absent |
 | `avatar/talkingHead.ts` | Pinned library adapter, English module, model and resource lifecycle |
 | `hooks/useAlexSpeech.ts` | React lifecycle, playback state and WebSocket markers |
 | `components/shared/AlexAvatar.tsx` | Lazy renderer, status, model fallback and enable-audio control |
@@ -107,6 +112,19 @@ Browser tests run the real participant UI and local model with synthetic audio
 and mocked REST/WebSocket responses. An isolated Vite server on port 5178 has
 no backend proxy; tests deny media capture and create no research sessions.
 Screenshots/traces are written to the ignored `.local/` directory.
+
+The mouth tests inspect actual model morph weights throughout playback, checking
+timed visemes, word-only timing, untimed sound/silence, stop and restart. They
+also capture the canvas immediately after rendering an open mouth, avoiding a
+later screenshot that could miss a brief phoneme. A backend-generated frame can
+be replayed through the real player/renderer using its inline WAV fallback:
+
+```bash
+AVATAR_SPEECH_FIXTURE=/absolute/path/to/alex-speaking-frame.json npm run test:browser
+```
+
+The optional replay test skips when that local fixture is absent. It does not
+create a backend session or replace live HeadTTS/device acceptance checks.
 
 These tests do not establish voice quality, physical audio-output latency,
 perceptual lip-sync accuracy, cross-device synchronization or study outcomes.
