@@ -3,7 +3,7 @@ import type { AlexSpeech, LipSync } from "./speech";
 
 export interface SpeechRenderer {
   audioContext: AudioContext;
-  speak(audio: AudioBuffer, lipsync: LipSync | null): void;
+  speak(audio: AudioBuffer, lipsync: LipSync | null, startedAt: number): void;
   stop(): void;
 }
 
@@ -108,12 +108,13 @@ export class SpeechPlayer {
       };
       // The audible source owns completion, including silent trailing samples.
       // TalkingHead animates a muted copy on the very same AudioContext clock.
-      source.start();
+      const startedAt = ctx.currentTime;
+      source.start(startedAt);
       started = true;
       this.source = source;
       this.current = speech;
       if (this.renderer?.audioContext === ctx) {
-        try { this.renderer.speak(audio, validateLipSync(speech.lipsync)); }
+        try { this.renderer.speak(audio, validateLipSync(speech.lipsync), startedAt); }
         catch (error) { console.warn("[Alex] Animation unavailable; audio continues.", error); }
       }
       this.callbacks.onBlocked(false);

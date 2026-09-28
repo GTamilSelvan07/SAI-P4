@@ -1,5 +1,6 @@
 import { TalkingHead } from "@met4citizen/talkinghead";
 import { LipsyncEn } from "@met4citizen/talkinghead/modules/lipsync-en.mjs";
+import { createMouthEnvelope, mouthLevelAt } from "./mouthEnvelope";
 
 /** Backend-provided alignment, in milliseconds, relative to the audio buffer. */
 export interface AvatarLipSync {
@@ -15,7 +16,7 @@ export interface TalkingHeadRenderer {
   /** Reuse this context for audible playback; this renderer owns its lifetime. */
   readonly audioContext: AudioContext;
   /** Animate an already-started utterance. The renderer's audio output is muted. */
-  speak(buffer: AudioBuffer, lipsync?: AvatarLipSync | null): void;
+  speak(buffer: AudioBuffer, lipsync: AvatarLipSync | null, startedAt: number): void;
   stop(): void;
   /** Stop controller playback before disposal, which closes audioContext. */
   dispose(): void;
@@ -88,9 +89,19 @@ export async function createTalkingHeadRenderer(
   }
 
   let disposed = false;
+  let mouthFrame: number | null = null;
+  const stopAudioMouth = () => {
+    if (mouthFrame === null) return;
+    cancelAnimationFrame(mouthFrame);
+    mouthFrame = null;
+    const mouth = head.mtAvatar.viseme_aa;
+    // Release our override and clear its last value for the next render.
+    if (mouth) Object.assign(mouth, { realtime: null, newvalue: 0, needsUpdate: true });
+  };
   const dispose = () => {
     if (disposed) return;
     disposed = true;
+    stopAudioMouth();
     try {
       // Removes the renderer canvas, its ResizeObserver, controls, animation
       // frame, model geometry/materials and speech sources in pinned 1.7.0.
@@ -132,6 +143,7 @@ export async function createTalkingHeadRenderer(
   }
 
   const stopVisualSpeech = () => {
+    stopAudioMouth();
     // Upstream stopSpeaking() stops but retains the source's onended callback.
     // A late callback can reset the NEXT utterance after our audible source
     // completes. We own the outer queue, so retire this muted source ourselves.
@@ -144,12 +156,29 @@ export async function createTalkingHeadRenderer(
 
   return {
     audioContext: head.audioCtx,
-    speak(buffer, lipsync) {
+    speak(buffer, lipsync, startedAt) {
       if (disposed) return;
       // The controller invokes this immediately after starting its own source
       // on audioContext. isRaw avoids upstream pre-roll, pauses and gestures.
       stopVisualSpeech();
-      if (!lipsync) return; // Do not fabricate timings from the transcript.
+      if (!lipsync) {
+        const mouth = head.mtAvatar.viseme_aa;
+        if (!mouth) return;
+        const envelope = createMouthEnvelope(buffer);
+        const animateMouth = () => {
+          if (disposed) return;
+          // Follow real playback time, so a delayed frame or suspended context
+          // cannot advance a separate animation timer ahead of the audio.
+          Object.assign(mouth, {
+            realtime: head.audioCtx.state === "running"
+              ? mouthLevelAt(envelope, head.audioCtx.currentTime - startedAt) : 0,
+            needsUpdate: true,
+          });
+          mouthFrame = requestAnimationFrame(animateMouth);
+        };
+        animateMouth();
+        return;
+      }
       head.speakAudio({ audio: buffer, ...lipsync }, {
         lipsyncLang: "en",
         isRaw: true,
