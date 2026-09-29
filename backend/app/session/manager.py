@@ -16,6 +16,7 @@ from app.models import SessionMeta, EventEntry, EventType, ParticipantInfo
 from app.logging.events import EventLogger
 from app.logging.transcript import TranscriptLogger
 from app.logging.lsl_markers import LSLMarkerLogger
+from app.audio.utterances import utterance_cache
 from app.session.bibd import (
     assign_anchoring_direction,
     assign_amplification_target,
@@ -271,6 +272,7 @@ class ActiveSession:
         self.event_logger.close()
         self.transcript_logger.close()
         self.lsl_logger.close()
+        utterance_cache.drop_session(self.session_id)
         # Update DB row so dashboards/reports can distinguish ended from in-progress sessions.
         # JSONL remains the source of truth; this is just a status flag for queries.
         try:

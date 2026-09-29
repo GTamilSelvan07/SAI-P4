@@ -45,11 +45,17 @@ ASR transcript ─► FacilitatorEngine.add_transcript()
                                         ▼
                                   TTS (executor thread)
                                         │
-                          broadcast text + base64 WAV over JSON WS
+                          broadcast alex_speaking over JSON WS
+                          (audio_url + base64 WAV + lipsync timings)
                           + write audio_alex.wav + log EventEntry + LSL marker
+                                        │
+                          client reports avatar_speech_started / _ended
+                          → EventEntry + LSL marker at actual playback
 ```
 
-If the LLM does not return within `FAILSAFE_TIMEOUT_SECONDS` (15 s), a pre-recorded failsafe clip (or live-TTS fallback) plays so participants always hear a response.
+If the LLM does not return within the Ollama timeout (15 s), a pre-recorded failsafe clip (or live-TTS fallback) plays so participants always hear a response.
+
+**Two markers per intervention, deliberately.** `ai_intervention` is stamped when the text is generated; `avatar_speech_start` is stamped when a client reports that playback actually began, after fetch, decode and render delay. Only the second is a defensible speech onset for physiology alignment, but the first is kept because it is what earlier sessions recorded. P1 and P2 each report their own, distinguished by `speaker`.
 
 ## Session lifecycle
 

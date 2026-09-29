@@ -16,6 +16,7 @@ from app.session.orchestrator_registry import orchestrator_registry
 from app.models import EventEntry, EventType, AISource
 from app.ws.hub import ws_manager
 from app.audio.manager import audio_registry
+from app.audio.speech_frame import build_alex_speaking
 from app.video.recorder import video_registry
 
 router = APIRouter()
@@ -200,6 +201,7 @@ VALID_MSG_TYPES = {
     "posttask_complete", "survey_response", "decision_vote", "preference_vote",
     "researcher_failsafe", "researcher_advance", "researcher_flag",
     "prompt_composed", "prompt_live_tts_play",
+    "avatar_speech_started", "avatar_speech_ended",
 }
 
 # Allowed annotation tags. Free-form note travels alongside.
@@ -355,12 +357,13 @@ async def _handle_ws_message(session: ActiveSession, session_id: str, role: str,
         session.lsl_logger.push("failsafe_override", category)
 
         audio_pcm = None
-        audio_b64 = None
+        speech = None
         try:
             from app.audio.failsafe import failsafe_manager
             if not failsafe_manager.loaded:
                 failsafe_manager.load_clips()
-            audio_pcm = failsafe_manager.get_clip_bytes(category)
+            speech = failsafe_manager.get_clip_speech(category)
+            audio_pcm = speech.pcm16_pipeline if speech else None
             if not text:
                 text = failsafe_manager.get_clip_text(category) or ""
         except Exception as e:
@@ -370,24 +373,12 @@ async def _handle_ws_message(session: ActiveSession, session_id: str, role: str,
             try:
                 from app.audio.tts import create_tts
                 tts = create_tts()
-                audio_pcm = await asyncio.to_thread(tts.get_pcm16, text)
+                speech = await asyncio.to_thread(tts.synthesize_speech, text)
+                audio_pcm = speech.pcm16_pipeline if speech else None
             except Exception as e:
                 log.warning(f"[WS] failsafe TTS failed for {category}: {e}")
 
         if audio_pcm:
-            try:
-                import base64
-                import io
-                import wave
-                wav_buf = io.BytesIO()
-                with wave.open(wav_buf, "wb") as wf:
-                    wf.setnchannels(1)
-                    wf.setsampwidth(2)
-                    wf.setframerate(16000)
-                    wf.writeframes(audio_pcm)
-                audio_b64 = base64.b64encode(wav_buf.getvalue()).decode("ascii")
-            except Exception as e:
-                log.warning(f"[WS] failsafe WAV encode failed for {category}: {e}")
             try:
                 audio_mgr = audio_registry.get(session_id)
                 if audio_mgr:
@@ -395,17 +386,52 @@ async def _handle_ws_message(session: ActiveSession, session_id: str, role: str,
             except Exception as e:
                 log.warning(f"[WS] failsafe Alex audio write failed for {session_id}: {e}")
 
-        await ws_manager.broadcast(session_id, {
-            "type": "alex_speaking",
-            "data": {
-                "text": text,
-                "audio": audio_b64,
-                "source": AISource.FAILSAFE_CLIP.value,
-                "trigger": "researcher",
-                "condition": session.meta.conditions[0] if session.meta.conditions else None,
-                "category": category,
+        await ws_manager.broadcast(session_id, build_alex_speaking(
+            session_id=session_id,
+            text=text,
+            speech=speech,
+            audio_pcm=audio_pcm,
+            source=AISource.FAILSAFE_CLIP.value,
+            trigger="researcher",
+            condition=session.meta.conditions[0] if session.meta.conditions else None,
+            category=category,
+        ))
+
+    elif msg_type in ("avatar_speech_started", "avatar_speech_ended"):
+        # When Alex was actually heard, reported by the client that played it.
+        # The ai_intervention event and marker fire when the text is generated;
+        # the avatar then adds fetch, decode and render delay on top, so the
+        # honest onset can only come from the browser. Both are kept — which one
+        # the analysis uses is its own call.
+        #
+        # P1 and P2 each report their own playback, so expect one event per
+        # client per utterance, distinguished by `speaker`.
+        #
+        # The marker is stamped on arrival here, not by the client: a browser
+        # clock cannot be compared to the physiology stream without sync. Any
+        # client-supplied `client_ts` is kept in `extra` for diagnostics only.
+        payload = data.get("data", {}) or {}
+        utterance_id = payload.get("utterance_id") or ""
+        if not utterance_id:
+            log.warning(f"[WS] {msg_type} from {role} in {session_id} without utterance_id")
+            return
+        started = msg_type == "avatar_speech_started"
+        phase, condition, task_id = _event_context(session_id)
+        session.event_logger.log(EventEntry(
+            type=EventType.AVATAR_SPEECH_START if started else EventType.AVATAR_SPEECH_END,
+            phase=phase,
+            condition=condition,
+            speaker=role,
+            extra={
+                "utterance_id": utterance_id,
+                "task_id": task_id,
+                "client_ts": payload.get("client_ts"),
             },
-        })
+        ))
+        session.lsl_logger.push(
+            "avatar_speech_start" if started else "avatar_speech_end",
+            f"{role}:{utterance_id}",
+        )
 
     elif msg_type == "researcher_advance":
         orch = orchestrator_registry.get(session_id)

@@ -21,6 +21,7 @@ from app.logging.lsl_markers import LSLMarkerLogger
 from app.ai.ollama_client import ollama, LLMResponse
 from app.ai.quality_gate import check_quality
 from app.ai.triggers import TriggerEvaluator, TriggerReason
+from app.audio.speech import SpeechAudio
 from app.audio.tts import create_tts
 from app.audio.failsafe import failsafe_manager
 
@@ -81,7 +82,8 @@ class FacilitatorContext:
 class FacilitatorResponse:
     """Result of a facilitator intervention."""
     text: str
-    audio_pcm: Optional[bytes]  # raw PCM16 for injection + recording
+    audio_pcm: Optional[bytes]  # raw PCM16 at AUDIO_SAMPLE_RATE for injection + recording
+    speech: Optional[SpeechAudio]  # browser-rate audio + lipsync timings, if the engine produced them
     source: AISource
     model: Optional[str]
     llm_latency_ms: int
@@ -197,7 +199,7 @@ class FacilitatorEngine:
         # C0: No AI — should never be called
         if self._condition == Condition.C0_NO_AI:
             return FacilitatorResponse(
-                text="", audio_pcm=None, source=AISource.LIVE_LLM,
+                text="", audio_pcm=None, speech=None, source=AISource.LIVE_LLM,
                 model=None, llm_latency_ms=0, tts_latency_ms=0,
                 trigger=trigger, condition="C0", failure_mode="F0",
             )
@@ -261,15 +263,18 @@ class FacilitatorEngine:
 
         # TTS (run in executor to avoid blocking event loop)
         tts_t0 = time.time()
-        tts_pcm = await asyncio.get_running_loop().run_in_executor(
-            None, self._tts.get_pcm16, text
+        speech = await asyncio.get_running_loop().run_in_executor(
+            None, self._tts.synthesize_speech, text
         )
         tts_latency = int((time.time() - tts_t0) * 1000)
 
+        tts_pcm = speech.pcm16_pipeline if speech else None
         if tts_pcm is None:
-            # TTS failed — use failsafe audio but keep the LLM text
-            failsafe_audio = failsafe_manager.get_failsafe_for_condition(self._condition)
-            tts_pcm = failsafe_audio  # may still be None if clips missing
+            # TTS failed — use failsafe audio but keep the LLM text. The clip's
+            # visemes describe the clip, which is what participants actually
+            # hear, so they stay attached even though the caption differs.
+            speech = failsafe_manager.get_failsafe_speech_for_condition(self._condition)
+            tts_pcm = speech.pcm16_pipeline if speech else None  # None if clips missing
 
         self._ctx.last_response = text
         self._ctx.intervention_count += 1
@@ -280,7 +285,7 @@ class FacilitatorEngine:
         self._triggers.state.reset_after_intervention()
 
         response = FacilitatorResponse(
-            text=text, audio_pcm=tts_pcm, source=source,
+            text=text, audio_pcm=tts_pcm, speech=speech, source=source,
             model=config.ollama.model, llm_latency_ms=llm_latency,
             tts_latency_ms=tts_latency, trigger=trigger,
             condition=self._condition.value, failure_mode=failure_mode,
@@ -399,7 +404,8 @@ class FacilitatorEngine:
     async def _failsafe_response(self, trigger: str, failure_mode: str) -> FacilitatorResponse:
         """Return a failsafe clip when LLM fails.
         Tries pre-recorded WAV clips first, falls back to live TTS synthesis."""
-        audio_bytes = failsafe_manager.get_failsafe_for_condition(self._condition)
+        speech = failsafe_manager.get_failsafe_speech_for_condition(self._condition)
+        audio_bytes = speech.pcm16_pipeline if speech else None
 
         self._event_logger.log(EventEntry(
             type=EventType.AI_TIMEOUT,
@@ -413,9 +419,10 @@ class FacilitatorEngine:
         # If no pre-recorded clips, synthesize via TTS so participants hear audio
         if audio_bytes is None:
             try:
-                audio_bytes = await asyncio.get_running_loop().run_in_executor(
-                    None, self._tts.get_pcm16, text
+                speech = await asyncio.get_running_loop().run_in_executor(
+                    None, self._tts.synthesize_speech, text
                 )
+                audio_bytes = speech.pcm16_pipeline if speech else None
             except Exception as e:
                 log.warning(f"[Facilitator] Failsafe TTS synthesis failed: {e}")
 
@@ -425,7 +432,7 @@ class FacilitatorEngine:
         self._triggers.state.reset_after_intervention()
 
         response = FacilitatorResponse(
-            text=text, audio_pcm=audio_bytes, source=AISource.FAILSAFE_CLIP,
+            text=text, audio_pcm=audio_bytes, speech=speech, source=AISource.FAILSAFE_CLIP,
             model=None, llm_latency_ms=0, tts_latency_ms=0,
             trigger=trigger, condition=self._condition.value,
             failure_mode=failure_mode,
